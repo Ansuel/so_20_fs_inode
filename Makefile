@@ -7,11 +7,13 @@ AR=ar
 BINS= simplefs_test
 
 #add here your object files
-OBJS = disk_driver.o
+OBJS = disk_driver.o\
+	utils.o
 
 HEADERS=bitmap.h\
 	disk_driver.h\
-	simplefs.h
+	simplefs.h\
+	utils.h
 
 %.o:	%.c $(HEADERS)
 	$(CC) $(CCOPTS) -c -o $@  $<

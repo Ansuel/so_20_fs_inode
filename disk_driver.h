@@ -1,7 +1,7 @@
 #pragma once
 #include "bitmap.h"
 
-#define BLOCK_SIZE 512
+#define BLOCK_SIZE 4096
 // this is stored in the 1st block of the disk
 typedef struct {
   int num_blocks;
@@ -14,7 +14,8 @@ typedef struct {
 
 typedef struct {
   DiskHeader* header; // mmapped
-  char* bitmap_data;  // mmapped (bitmap)
+  int* bitmap_data;  // mmapped (bitmap)
+  int reserved_blocks; //size of header + bitmap
   int fd; // for us
 } DiskDriver;
 
@@ -29,7 +30,7 @@ typedef struct {
 // if the file was new
 // compiles a disk header, and fills in the bitmap of appropriate size
 // with all 0 (to denote the free space);
-void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks);
+int DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks);
 
 // reads the block in position block_num
 // returns -1 if the block is free accrding to the bitmap
