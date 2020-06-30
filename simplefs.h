@@ -4,15 +4,6 @@
 
 /*these are structures stored on disk*/
 
-// header, occupies the first portion of each block in the disk
-// represents a chained list of blocks
-typedef struct {
-  int previous_block; // chained list (previous block)
-  int next_block;     // chained list (next_block)
-  int block_in_file; // position in the file, if 0 we have a file control block
-} BlockHeader;
-
-
 // this is in the first block of a chain, after the header
 typedef struct {
   int directory_block; // first block of the parent directory
@@ -29,40 +20,49 @@ typedef struct {
 // and can contain some data
 
 /******************* stuff on disk BEGIN *******************/
+// FirstFileBlock: E' il primo blocco di un file. E' diviso in 3 parti:
+// fcb che contiene tutte le info del file
+// data che contiene dati opzionali
+// inode che contiene gli indici della sequenza dei blocchi del file(se necessario, ovvero quando il file è minuscolo)
 typedef struct {
-  BlockHeader header;
   FileControlBlock fcb;
-  char data[BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader)] ;
+  char data[BLOCK_SIZE-sizeof(FileControlBlock)-(32*sizeof(int))] ;
+  int inode_block[32]; //l'ultimo indice deve essere -1 o indice ad un inodeblock
 } FirstFileBlock;
 
-// this is one of the next physical blocks of a file
+// InodeBlock: blocco contenente solo indici. L'ultimo elemento dell'array,
+// è riservato al valore "-1" se il blocco termina, altrimenti avrà come valore
+// un indice ad un altro InodeBlock(che conterrà la successiva sequenza dei blocchi del file)
 typedef struct {
-  BlockHeader header;
-  char  data[BLOCK_SIZE-sizeof(BlockHeader)];
+  int inodeList[BLOCK_SIZE/sizeof(int)];
+} InodeBlock; 
+
+//FileBlock: blocco contenente solo dati
+typedef struct {
+  char  data[BLOCK_SIZE];
 } FileBlock;
 
+
 // this is the first physical block of a directory
+// FirstDirectoryBlock: E' il primo blocco di una directory. E' suddiviso in:
+// fcb che conterrà tutte le info del file(con un campo che ti dice se è un file o directory)
+// num_entries che conterrà il numero degli elementi nella directory
+// file_blocks è una lista contenente gli indici dei blocchi dove sono contenuti gli i FirstFileBlock della directory
+// inode è una struct contenete gli indici dei DirectoryBlock 
 typedef struct {
-  BlockHeader header;
   FileControlBlock fcb;
   int num_entries;
-  int file_blocks[ (BLOCK_SIZE
-		   -sizeof(BlockHeader)
-		   -sizeof(FileControlBlock)
-		    -sizeof(int))/sizeof(int) ];
+  int file_blocks[ (BLOCK_SIZE - sizeof(FileControlBlock) - (32*sizeof(int)) -(sizeof(int))) / (sizeof(int)) ];
+  int inode_block[32]; //l'ultimo indice deve essere -1 o indice ad un inodeblock
 } FirstDirectoryBlock;
 
 // this is remainder block of a directory
 typedef struct {
-  BlockHeader header;
-  int file_blocks[ (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) ];
+  int file_blocks[ (BLOCK_SIZE)/sizeof(int) ];
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
 
-
-
-
-  
+/*
 typedef struct {
   DiskDriver* disk;
   // add more fields if needed
@@ -144,5 +144,4 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
 int SimpleFS_remove(SimpleFS* fs, char* filename);
 
 
-  
-
+*/
