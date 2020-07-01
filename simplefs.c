@@ -148,9 +148,9 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
         if (lastblockIndex.inodeList[MaxInodeInBlock-1] == -1)
             lastblockIndex.inodeList[MaxInodeInBlock-1] = freeInodeBlock;
 
-        for (i=0;i<MaxInodeInBlock;i++) {
+        for (i=0;i<MaxInodeInBlock && num_blocks >= 0;i++, num_blocks--) {
             int freeBlock = DiskDriver_getFreeBlock(disk, 0);
-            // printf("Alloco %d file block\n",freeBlock);
+            printf("Alloco %d file block\n",freeBlock);
 
             ret = DiskDriver_writeBlock(disk, data + MaxDataInFDB + (i*BLOCK_SIZE), freeBlock);
             if (ret) return handle_error("Errore scrittura", ret);
