@@ -75,6 +75,8 @@ int DiskDriver_writeBlock(DiskDriver *disk, void *src, int block_num) {
   if (block_num > disk->header->num_blocks)
     return -1;
 
+  // printf("Offset Calc %d\n",indexToOffset(disk, block_num));
+
   ret = lseek(disk->fd, indexToOffset(disk, block_num), SEEK_SET);
   if (ret < 0)
     return handle_error("Error lseek: ", ret);

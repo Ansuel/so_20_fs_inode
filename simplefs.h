@@ -4,6 +4,10 @@
 
 /*these are structures stored on disk*/
 
+#define MaxDataInFFB BLOCK_SIZE-sizeof(FileControlBlock)-(32*sizeof(int))
+#define MaxInodeInBlock BLOCK_SIZE/sizeof(int)
+#define MaxDataInFDB (BLOCK_SIZE - sizeof(FileControlBlock) - (32*sizeof(int)) -(sizeof(int))) / (sizeof(int))
+
 // this is in the first block of a chain, after the header
 typedef struct {
   int directory_block; // first block of the parent directory
@@ -71,7 +75,7 @@ typedef struct {
 // this is a file handle, used to refer to open files
 typedef struct {
   SimpleFS* sfs;                   // pointer to memory file system structure
-  FirstFileBlock* fcb;             // pointer to the first block of the file(read it)
+  FirstFileBlock* ffb;             // pointer to the first block of the file(read it)
   FirstDirectoryBlock* directory;  // pointer to the directory where the file is stored
   // BlockHeader* current_block;      // current block in the file
   int pos_in_file;                 // position of the cursor
@@ -79,7 +83,7 @@ typedef struct {
 
 typedef struct {
   SimpleFS* sfs;                   // pointer to memory file system structure
-  FirstDirectoryBlock* dcb;        // pointer to the first block of the directory(read it)
+  FirstDirectoryBlock* fdb;        // pointer to the first block of the directory(read it)
   FirstDirectoryBlock* directory;  // pointer to the parent directory (null if top level)
   // BlockHeader* current_block;      // current block in the directory
   int pos_in_dir;                  // absolute position of the cursor in the directory
