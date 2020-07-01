@@ -28,6 +28,10 @@ DirectoryHandle *SimpleFS_init(SimpleFS *fs, DiskDriver *disk) {
   FirstDirectoryBlock *firstDir = calloc(1, sizeof(FirstDirectoryBlock));
   DiskDriver_readBlock(fs->disk, firstDir, 0);
 
+  // Cache top level dir in fs
+  fs->fdb_current_dir = firstDir;
+  fs->fdb_top_level_dir = firstDir;
+
   DirectoryHandle *dir = (DirectoryHandle *)malloc(sizeof(DirectoryHandle));
   dir->sfs = fs;
   dir->fdb = firstDir;
@@ -147,7 +151,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
     if (lastblockIndex.inodeList[MaxInodeInBlock - 1] == -1)
       lastblockIndex.inodeList[MaxInodeInBlock - 1] = freeInodeBlock;
 
-    for (i = 0; i < MaxInodeInBlock && num_blocks >= 0; i++, num_blocks--) {
+    for (i = 0; i < MaxInodeInBlock - 1 && num_blocks >= 0; i++, num_blocks--) {
       int freeBlock = DiskDriver_getFreeBlock(disk, 0);
 
       ret = DiskDriver_writeBlock(disk, data + MaxDataInFDB + (i * BLOCK_SIZE),
@@ -167,4 +171,172 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
   DiskDriver_writeBlock(disk, ffb, ffb->fcb.block_in_disk);
 
   return size;
+}
+
+int DeleteStoredFile(DiskDriver *disk, FirstFileBlock *file) {
+  int blocksToDel = file->fcb.size_in_blocks;
+  int inodeIndex;
+
+  // File is storend in more blocks
+  if (blocksToDel > 1) {
+    // Clear the blocks stored in inode block array
+    for (inodeIndex = 0; inodeIndex < 31 && blocksToDel > 0;
+         inodeIndex++, blocksToDel--) {
+      DiskDriver_freeBlock(disk, file->inode_block[inodeIndex]);
+    }
+
+    // Check if we have more than 30 inode block
+    int nextInodeBlock = file->inode_block[31];
+
+    // Loop to clear all blocks declared in inod blocks
+    while (nextInodeBlock != -1) {
+      InodeBlock indexBlock;
+      DiskDriver_readBlock(disk, &indexBlock, nextInodeBlock);
+      for (inodeIndex = 0; inodeIndex < MaxInodeInBlock - 1 && blocksToDel > 0;
+           inodeIndex++, blocksToDel--) {
+
+        DiskDriver_freeBlock(disk, indexBlock.inodeList[inodeIndex]);
+      }
+
+      // Clear the inode block
+      DiskDriver_freeBlock(disk, nextInodeBlock);
+      nextInodeBlock = indexBlock.inodeList[MaxInodeInBlock - 1];
+    }
+  }
+
+  // Finally clear th ffb
+  DiskDriver_freeBlock(disk, file->fcb.block_in_disk);
+
+  return 0;
+}
+
+int DeleteStoredDir(DiskDriver *disk, FirstDirectoryBlock *dir) {
+  FirstFileBlock* file_in_dir = malloc(sizeof(FirstFileBlock));
+
+  int entryToDel = dir->num_entries;
+  int inodeIndex;
+
+  for (inodeIndex = 0; inodeIndex < 31 && entryToDel > 0;
+       inodeIndex++, entryToDel--) {
+    DiskDriver_readBlock(disk, file_in_dir, dir->inode_block[inodeIndex]);
+    if (file_in_dir->fcb.is_dir) {
+      DeleteStoredDir(disk, (FirstDirectoryBlock *)file_in_dir);
+    } else {
+      DeleteStoredFile(disk, file_in_dir);
+    }
+  }
+
+  // Check if we have more than 30 inode block
+  int nextInodeBlock = dir->inode_block[31];
+
+  // Loop to clear all blocks declared in inod blocks
+  while (nextInodeBlock != -1) {
+    InodeBlock indexBlock;
+    DiskDriver_readBlock(disk, &indexBlock, nextInodeBlock);
+    for (inodeIndex = 0; inodeIndex < MaxInodeInBlock - 1 && entryToDel > 0;
+         inodeIndex++, entryToDel--) {
+
+      DiskDriver_readBlock(disk, &file_in_dir,
+                           indexBlock.inodeList[inodeIndex]);
+      if (file_in_dir->fcb.is_dir) {
+        DeleteStoredDir(disk, (FirstDirectoryBlock *)file_in_dir);
+      } else {
+        DeleteStoredFile(disk, file_in_dir);
+      }
+    }
+
+    // Clear the inode block
+    DiskDriver_freeBlock(disk, nextInodeBlock);
+    nextInodeBlock = indexBlock.inodeList[MaxInodeInBlock - 1];
+  }
+
+  DiskDriver_freeBlock(disk, dir->fcb.block_in_disk);
+  free(file_in_dir);
+
+  return 0;
+}
+
+int SimpleFS_remove(SimpleFS *fs, char *filename) {
+  // By default set the file as not found
+  int ret = -1;
+
+  if (!fs->fdb_current_dir)
+    return -1;
+
+  // int len = strlen(fs->fdb_current_dir.name);
+
+  // // Can't remove root directly? Can this happen?
+  // if (fs->fdb_current_dir == fs->fdb_top_level_dir)
+  //   return -1;
+
+  DiskDriver *disk = fs->disk;
+  FirstDirectoryBlock *dir = fs->fdb_current_dir;
+
+  int entries = dir->num_entries;
+  int i, block;
+
+  FirstFileBlock *file = malloc(sizeof(FirstFileBlock));
+
+  // I hate strcmp
+  char *name = calloc(MaxFileLen, sizeof(char));
+  memcpy(name, filename, strlen(filename));
+
+  // Search in the first file_blocks
+  for (i = 0; i < 31 && i < entries; i++, entries--) {
+    block = dir->file_blocks[i];
+
+    // We load the block alyeas as a file
+    // The fdb has the fcb as first struct elemen so this is not a problem
+    // This is casted to a fdb if is_dir is true in fcb
+    DiskDriver_readBlock(disk, file, block);
+    FileControlBlock fcb = file->fcb;
+
+    // Actually search the file
+    if (!memcmp(name, fcb.name, sizeof(char) * MaxFileLen)) {
+      if (fcb.is_dir) {
+        ret = DeleteStoredDir(disk, (FirstDirectoryBlock *)file);
+      } else {
+        ret = DeleteStoredFile(disk, file);
+      }
+      // File found skip searching in remaining entires
+      goto exit;
+    }
+  }
+
+  // Check if we have more than 30 inode block
+  int nextInodeBlock = dir->inode_block[31], inodeIndex;
+
+  // Loop to clear all blocks declared in inod blocks
+  while (nextInodeBlock != -1) {
+    InodeBlock indexBlock;
+    DiskDriver_readBlock(disk, &indexBlock, nextInodeBlock);
+    for (inodeIndex = 0; inodeIndex < MaxInodeInBlock - 1 && entries > 0;
+         inodeIndex++, entries--) {
+
+      block = dir->file_blocks[i];
+
+      DiskDriver_readBlock(disk, file, block);
+      FileControlBlock fcb = file->fcb;
+
+      // Actually search the file
+      if (!memcmp(name, fcb.name, sizeof(char) * MaxFileLen)) {
+        if (fcb.is_dir) {
+          ret = DeleteStoredDir(disk, (FirstDirectoryBlock *)file);
+        } else {
+          ret = DeleteStoredFile(disk, file);
+        }
+        // File found skip searching in remaining entires
+        goto exit;
+      }
+    }
+
+    nextInodeBlock = indexBlock.inodeList[MaxInodeInBlock - 1];
+  }
+
+exit:
+
+  free(file);
+  free(name);
+
+  return ret;
 }

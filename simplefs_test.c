@@ -26,7 +26,7 @@ int main(int agc, char **argv) {
 
   DiskDriver *disk = malloc(sizeof(DiskDriver));
 
-  DiskDriver_init(disk, DISK_NAME, 100000);
+  DiskDriver_init(disk, DISK_NAME, 100);
 
   printf("Bitmap Blocks: %d\n", disk->header->bitmap_blocks);
   printf("Bitmap Entires: %d\n", disk->header->bitmap_entries);
@@ -63,6 +63,7 @@ int main(int agc, char **argv) {
   SimpleFS fs;
   fs.disk = disk;
   ret = SimpleFS_format(&fs);
+  if (ret) return -1;
 
   DirectoryHandle* dirHandle = SimpleFS_init(&fs, fs.disk);
 
@@ -78,20 +79,22 @@ int main(int agc, char **argv) {
   int written = SimpleFS_write(file1, testText1, strlen(testText1));
   printf("Scritti n byte: %d\n", written);
 
-  
+  // int fd1 = open("testfi.txt", O_CREAT | O_RDWR, 0777);
 
-  int fd1 = open("testfi.txt", O_CREAT | O_RDWR, 0777);
+  // struct stat statbuf;
+  // fstat(fd1, &statbuf);
 
-  struct stat statbuf;
-  fstat(fd1, &statbuf);
+  // printf("File grande %ld\n", statbuf.st_size);
 
-  printf("File grande %d\n", statbuf.st_size);
+  // char * fileDAta = malloc(statbuf.st_size);
 
-  char * fileDAta = malloc(statbuf.st_size);
+  // ret = read(fd1, fileDAta, statbuf.st_size);
 
-  ret = read(fd1, fileDAta, statbuf.st_size);
+  // SimpleFS_write(file2,fileDAta, statbuf.st_size);
 
-  SimpleFS_write(file2,fileDAta, statbuf.st_size);
+  SimpleFS_remove(&fs, "PrimoFile");
+
+  SimpleFS_createFile(dirHandle, "PrimoFileSostitu");
 
 
 }

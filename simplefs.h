@@ -7,12 +7,13 @@
 #define MaxDataInFFB BLOCK_SIZE-sizeof(FileControlBlock)-(32*sizeof(int))
 #define MaxInodeInBlock BLOCK_SIZE/sizeof(int)
 #define MaxDataInFDB (BLOCK_SIZE - sizeof(FileControlBlock) - (32*sizeof(int)) -(sizeof(int))) / (sizeof(int))
+#define MaxFileLen 128
 
 // this is in the first block of a chain, after the header
 typedef struct {
   int directory_block; // first block of the parent directory
   int block_in_disk;   // repeated position of the block on the disk
-  char name[128];
+  char name[MaxFileLen];
   int  size_in_bytes;
   int size_in_blocks;
   int is_dir;          // 0 for file, 1 for dir
@@ -66,9 +67,10 @@ typedef struct {
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
 
-
 typedef struct {
   DiskDriver* disk;
+  FirstDirectoryBlock* fdb_current_dir;
+  FirstDirectoryBlock* fdb_top_level_dir;
   // add more fields if needed
 } SimpleFS;
 
