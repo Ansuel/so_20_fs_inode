@@ -28,9 +28,9 @@ int main(int agc, char **argv) {
 
   DiskDriver_init(disk, DISK_NAME, 100000);
 
-  // printf("Bitmap Blocks: %d\n", disk->header->bitmap_blocks);
-  // printf("Bitmap Entires: %d\n", disk->header->bitmap_entries);
-  // printf("Reserved blocks: %d\n", disk->reserved_blocks);
+  printf("Bitmap Blocks: %d\n", disk->header->bitmap_blocks);
+  printf("Bitmap Entires: %d\n", disk->header->bitmap_entries);
+  printf("Reserved blocks: %d\n", disk->reserved_blocks);
 
   // int free_block = DiskDriver_getFreeBlock(disk, 0);
 
@@ -85,16 +85,13 @@ int main(int agc, char **argv) {
   struct stat statbuf;
   fstat(fd1, &statbuf);
 
-  int size = 150000;
-
   printf("File grande %d\n", statbuf.st_size);
 
-  char * fileDAta = malloc(size);
-  // char fileDAta[1000015];
+  char * fileDAta = malloc(statbuf.st_size);
 
-  ret = read(fd1, fileDAta, size);
+  ret = read(fd1, fileDAta, statbuf.st_size);
 
-  SimpleFS_write(file2,fileDAta, size);
+  SimpleFS_write(file2,fileDAta, statbuf.st_size);
 
 
 }
