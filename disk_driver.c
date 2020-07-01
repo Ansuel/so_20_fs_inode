@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define MaxBitMapEntryInBlock (BLOCK_SIZE / sizeof(char))
+#define MaxBitMapEntryInBlock (BLOCK_SIZE / sizeof(bitmapEntry))
 
 static int indexToOffset(DiskDriver *disk, int index) {
   return (index + disk->reserved_blocks) * BLOCK_SIZE;
@@ -42,7 +42,7 @@ int DiskDriver_init(DiskDriver *disk, const char *filename, int num_blocks) {
     }
 
     header.bitmap_entries =
-        (num_blocks - header.bitmap_blocks - 1) * sizeof(char);
+        (num_blocks - header.bitmap_blocks - 1) * sizeof(bitmapEntry);
     header.free_blocks = num_blocks - 1 - header.bitmap_blocks;
     header.first_free_block = 1 + header.bitmap_blocks;
 
@@ -55,7 +55,7 @@ int DiskDriver_init(DiskDriver *disk, const char *filename, int num_blocks) {
   if (disk->header == MAP_FAILED)
     return handle_error("Error mmap: ", -1);
 
-  disk->bitmap_data = mmap(NULL, sizeof(char) * (disk->header->bitmap_entries),
+  disk->bitmap_data = mmap(NULL, sizeof(bitmapEntry) * (disk->header->bitmap_entries),
                            PROT_READ | PROT_WRITE, MAP_SHARED, fd, BLOCK_SIZE);
   if (disk->bitmap_data == MAP_FAILED)
     return handle_error("Error mmap: ", -1);
@@ -91,7 +91,7 @@ int DiskDriver_writeBlock(DiskDriver *disk, void *src, int block_num) {
   if (ret < 0)
     return handle_error("Error write: ", ret);
 
-  disk->bitmap_data[block_num] = 1;
+  disk->bitmap_data[block_num].used = 1;
 
   return 0;
 }
@@ -107,7 +107,7 @@ int DiskDriver_readBlock(DiskDriver *disk, void *dest, int block_num) {
     return -1;
 
   // Can't read empty block
-  if (!disk->bitmap_data[block_num])
+  if (!disk->bitmap_data[block_num].used)
     return -1;
 
   ret = lseek(disk->fd, indexToOffset(disk, block_num), SEEK_SET);
@@ -130,7 +130,7 @@ int DiskDriver_freeBlock(DiskDriver *disk, int block_num) {
     return -1;
 
   // Block already empty
-  if (!disk->bitmap_data[block_num])
+  if (!disk->bitmap_data[block_num].used)
     return -1;
 
   // ret = lseek(disk->fd, indexToOffset(disk, block_num), SEEK_SET);
@@ -140,7 +140,7 @@ int DiskDriver_freeBlock(DiskDriver *disk, int block_num) {
   // Just set the block to be overwritable
   // The write will take care of empty the block if the data to be
   // written doesn't fill the entire block
-  disk->bitmap_data[block_num] = 0;
+  disk->bitmap_data[block_num].used = 0;
 
   return 0;
 }
@@ -148,7 +148,7 @@ int DiskDriver_freeBlock(DiskDriver *disk, int block_num) {
 int DiskDriver_getFreeBlock(DiskDriver *disk, int start) {
   // Search the first empty block from start
   for (; start < disk->header->bitmap_entries; start++) {
-    if (!disk->bitmap_data[start])
+    if (!disk->bitmap_data[start].used)
       return start;
   }
 
