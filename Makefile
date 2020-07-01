@@ -8,7 +8,8 @@ BINS= simplefs_test
 
 #add here your object files
 OBJS = disk_driver.o\
-	utils.o
+	utils.o\
+	simplefs.o
 
 HEADERS=bitmap.h\
 	disk_driver.h\

@@ -67,7 +67,7 @@ int DiskDriver_init(DiskDriver *disk, const char *filename, int num_blocks) {
 };
 
 int DiskDriver_writeBlock(DiskDriver *disk, void *src, int block_num) {
-  char *tmp;
+  // char *tmp;
   int ret;
   assert(disk);
 
@@ -80,11 +80,11 @@ int DiskDriver_writeBlock(DiskDriver *disk, void *src, int block_num) {
     return handle_error("Error lseek: ", ret);
 
   // Allocate empty buf to fill a block size
-  tmp = calloc(BLOCK_SIZE, sizeof(char));
-  memcpy(tmp, src, strlen(src));
+  // tmp = calloc(BLOCK_SIZE, sizeof(char));
+  // memcpy(tmp, src, strlen(src));
 
-  ret = write(disk->fd, tmp, BLOCK_SIZE);
-  free(tmp);
+  ret = write(disk->fd, src, BLOCK_SIZE);
+  // free(tmp);
 
   if (ret < 0)
     return handle_error("Error write: ", ret);
@@ -120,7 +120,6 @@ int DiskDriver_readBlock(DiskDriver *disk, void *dest, int block_num) {
 }
 
 int DiskDriver_freeBlock(DiskDriver *disk, int block_num) {
-  int ret;
 
   assert(disk);
 
@@ -132,9 +131,9 @@ int DiskDriver_freeBlock(DiskDriver *disk, int block_num) {
   if (!disk->bitmap_data[block_num])
     return -1;
 
-  ret = lseek(disk->fd, indexToOffset(disk, block_num), SEEK_SET);
-  if (ret < 0)
-    return handle_error("Error lseek: ", ret);
+  // ret = lseek(disk->fd, indexToOffset(disk, block_num), SEEK_SET);
+  // if (ret < 0)
+  //   return handle_error("Error lseek: ", ret);
 
   // Just set the block to be overwritable
   // The write will take care of empty the block if the data to be
@@ -156,8 +155,11 @@ int DiskDriver_getFreeBlock(DiskDriver *disk, int start) {
 }
 
 int DiskDriver_flush(DiskDriver *disk) {
-  munmap(disk->header, sizeof(DiskHeader *));
-  munmap(disk->bitmap_data, sizeof(char) * disk->header->bitmap_blocks);
+  int ret;
+  ret = munmap(disk->header, sizeof(DiskHeader *));
+  if(ret) return handle_error("Error in munmap: ", ret); 
+  ret = munmap(disk->bitmap_data, sizeof(char) * disk->header->bitmap_blocks);
+  if(ret) return handle_error("Error in munmap: ", ret);
 
   return 0;
 }

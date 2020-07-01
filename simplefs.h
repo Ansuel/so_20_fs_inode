@@ -62,7 +62,7 @@ typedef struct {
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
 
-/*
+
 typedef struct {
   DiskDriver* disk;
   // add more fields if needed
@@ -73,7 +73,7 @@ typedef struct {
   SimpleFS* sfs;                   // pointer to memory file system structure
   FirstFileBlock* fcb;             // pointer to the first block of the file(read it)
   FirstDirectoryBlock* directory;  // pointer to the directory where the file is stored
-  BlockHeader* current_block;      // current block in the file
+  // BlockHeader* current_block;      // current block in the file
   int pos_in_file;                 // position of the cursor
 } FileHandle;
 
@@ -81,7 +81,7 @@ typedef struct {
   SimpleFS* sfs;                   // pointer to memory file system structure
   FirstDirectoryBlock* dcb;        // pointer to the first block of the directory(read it)
   FirstDirectoryBlock* directory;  // pointer to the parent directory (null if top level)
-  BlockHeader* current_block;      // current block in the directory
+  // BlockHeader* current_block;      // current block in the directory
   int pos_in_dir;                  // absolute position of the cursor in the directory
   int pos_in_block;                // relative position of the cursor in the block
 } DirectoryHandle;
@@ -95,7 +95,7 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk);
 // it also clears the bitmap of occupied blocks on the disk
 // the current_directory_block is cached in the SimpleFS struct
 // and set to the top level directory
-void SimpleFS_format(SimpleFS* fs);
+int SimpleFS_format(SimpleFS* fs);
 
 // creates an empty file in the directory d
 // returns null on error (file existing, no free blocks)
@@ -144,4 +144,3 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
 int SimpleFS_remove(SimpleFS* fs, char* filename);
 
 
-*/
