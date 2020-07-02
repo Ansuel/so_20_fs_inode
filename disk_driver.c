@@ -9,8 +9,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define MaxBitMapEntryInBlock (BLOCK_SIZE / sizeof(bitmapEntry))
-
 static int indexToOffset(DiskDriver *disk, int index) {
   return (index + disk->reserved_blocks) * BLOCK_SIZE;
 }

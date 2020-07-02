@@ -25,7 +25,7 @@ int main(int agc, char **argv) {
 
   DiskDriver *disk = malloc(sizeof(DiskDriver));
 
-  DiskDriver_init(disk, DISK_NAME, 10000);
+  DiskDriver_init(disk, DISK_NAME, 100000);
 
   printf("Bitmap Blocks: %d\n", disk->header->bitmap_blocks);
   printf("Bitmap Entires: %d\n", disk->header->bitmap_entries);
@@ -51,16 +51,20 @@ int main(int agc, char **argv) {
   FileHandle *file9 = SimpleFS_createFile(dirHandle, "NonoFile");
   FileHandle *file10 = SimpleFS_createFile(dirHandle, "DecimoFile");
   int i;
-  for(i = 0; i < 1000; i++){
-    SimpleFS_createFile(dirHandle, "File");
+  for(i = 0; i < 50000; i++){
+    ret = SimpleFS_createFile(dirHandle, "File");
+    if (!ret) return 0;
   }
 
+  // FileHandle *ultimo1 = SimpleFS_createFile(dirHandle, "penUltimo");
   FileHandle *ultimo = SimpleFS_createFile(dirHandle, "Ultimo");
 
+  // FileHandle* open_file1 = SimpleFS_openFile(dirHandle, "penUltimo");
   FileHandle* open_file = SimpleFS_openFile(dirHandle, "Ultimo");
-  if(open_file){printf("Trovato");}
-  SimpleFS_write(open_file, "STO FUNZIONANDO", strlen("STO FUNZIONANDO"));
+  if(open_file){printf("Trovato\n");}
+  // SimpleFS_write(open_file, "STO FUNZIONANDO", strlen("STO FUNZIONANDO"));
 
+  // FileHandle* open_file2 = SimpleFS_openFile(dirHandle, "PrimoFile");
 
   printf("Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
 

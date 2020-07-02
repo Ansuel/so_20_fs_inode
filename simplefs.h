@@ -3,17 +3,19 @@
 #include "disk_driver.h"
 
 /*these are structures stored on disk*/
+#define MaxElemInBlock BLOCK_SIZE/sizeof(int)
 
-#define MaxDataInFFB BLOCK_SIZE-sizeof(FileControlBlock)-(32*sizeof(int))
-#define MaxInodeInBlock BLOCK_SIZE/sizeof(int)
-#define MaxFileLen 128
-#define MaxFileInDir (BLOCK_SIZE - sizeof(FileControlBlock) - (32*sizeof(int)) -(sizeof(int))) / (sizeof(int))
+#define MaxFilenameLen 128
+#define MaxFileInDir (BLOCK_SIZE - sizeof(FileControlBlock) - (MaxInodeInFFB*sizeof(int)) -(sizeof(int))) / (sizeof(int))
+#define MaxDataInFFB (BLOCK_SIZE-sizeof(FileControlBlock)-(MaxInodeInFFB*sizeof(int)))
+
+#define MaxInodeInFFB 32
 
 // this is in the first block of a chain, after the header
 typedef struct {
   int directory_block; // first block of the parent directory
   int block_in_disk;   // repeated position of the block on the disk
-  char name[MaxFileLen];
+  char name[MaxFilenameLen];
   int  size_in_bytes;
   int size_in_blocks;
   int is_dir;          // 0 for file, 1 for dir
@@ -31,8 +33,8 @@ typedef struct {
 // inode che contiene gli indici della sequenza dei blocchi del file(se necessario, ovvero quando il file è minuscolo)
 typedef struct {
   FileControlBlock fcb;
-  char data[BLOCK_SIZE-sizeof(FileControlBlock)-(32*sizeof(int))] ;
-  int inode_block[32]; //l'ultimo indice deve essere -1 o indice ad un inodeblock
+  char data[MaxDataInFFB] ;
+  int inode_block[MaxInodeInFFB]; //l'ultimo indice deve essere -1 o indice ad un inodeblock
 } FirstFileBlock;
 
 // InodeBlock: blocco contenente solo indici. L'ultimo elemento dell'array,
@@ -58,7 +60,7 @@ typedef struct {
   FileControlBlock fcb;
   int num_entries;
   int file_blocks[MaxFileInDir];
-  int inode_block[32]; //l'ultimo indice deve essere -1 o indice ad un inodeblock
+  int inode_block[MaxInodeInFFB]; //l'ultimo indice deve essere -1 o indice ad un inodeblock
 } FirstDirectoryBlock;
 
 // this is remainder block of a directory
