@@ -17,7 +17,6 @@ int main(int agc, char **argv) {
   printf("FileBlock size %ld\n", sizeof(FileBlock));
   printf("FirstDirectoryBlock size %ld\n", sizeof(FirstDirectoryBlock));
   printf("DirectoryBlock size %ld\n", sizeof(DirectoryBlock));
-
   // TEST DISK_DRIVER.C
 
   int ret;
@@ -70,8 +69,6 @@ int main(int agc, char **argv) {
   FileHandle *file1 = SimpleFS_createFile(dirHandle, "PrimoFile");
   FileHandle *file2 = SimpleFS_createFile(dirHandle, "SecondoFile");
   SimpleFS_createFile(dirHandle, "TerzoFile");
-  SimpleFS_createFile(dirHandle, "QuartoFile");
-  SimpleFS_createFile(dirHandle, "QuintoFile");
   printf("Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
 
 
@@ -96,5 +93,8 @@ int main(int agc, char **argv) {
 
   SimpleFS_createFile(dirHandle, "PrimoFileSostitu");
 
+  SimpleFS_mkDir(dirHandle,"NUOVA_DIRECTORY");
+  printf("Dopo mkDir - Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
+  
 
 }

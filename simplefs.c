@@ -60,6 +60,7 @@ FileHandle *SimpleFS_createFile(DirectoryHandle *d, const char *filename) {
 
   DiskDriver_writeBlock(disk, ffb, destBlock);
   // TODO: quanti elementi abbiamo nel FirstDirectoryBlock?
+  // TODO: se abbiamo più di 31 elementi nella directory, che succede?
   FirstDirectoryBlock *destDir = d->fdb;
   destDir->file_blocks[destDir->num_entries] = destBlock;
   destDir->num_entries++;
@@ -257,6 +258,7 @@ int DeleteStoredDir(DiskDriver *disk, FirstDirectoryBlock *dir) {
 }
 
 int SimpleFS_remove(SimpleFS *fs, char *filename) {
+
   // By default set the file as not found
   int ret = -1;
 
@@ -334,9 +336,45 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
   }
 
 exit:
-
+  dir->num_entries--;
   free(file);
   free(name);
 
   return ret;
+}
+
+// creates a new directory in the current one (stored in fs->current_directory_block)
+// 0 on success
+// -1 on error
+int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
+
+int new_free_block = DiskDriver_getFreeBlock(d->sfs->disk,0);
+FirstDirectoryBlock* current_dir_block = d->sfs->fdb_current_dir;
+
+DirectoryHandle* new_dir = calloc(1,sizeof(DirectoryHandle));
+new_dir->sfs = d->sfs;
+new_dir->directory = d->fdb;
+new_dir->pos_in_dir = 0;
+new_dir->pos_in_block = new_free_block;
+
+FirstDirectoryBlock* new_fdb = calloc(1, sizeof(FirstDirectoryBlock));
+new_fdb->fcb.directory_block = d->fdb->fcb.block_in_disk;
+printf("block_in_disk: %d\n",d->fdb->fcb.block_in_disk);
+new_fdb->fcb.block_in_disk = new_dir->pos_in_block;
+char* tmp = calloc(128,sizeof(char));
+memcpy(tmp,dirname,strlen(dirname));
+memcpy(new_fdb->fcb.name,tmp,strlen(tmp));
+free(tmp);
+new_fdb->fcb.size_in_bytes = 0;
+new_fdb->fcb.size_in_blocks = 1;
+new_fdb->fcb.is_dir = 1;
+new_fdb->num_entries = 0;
+
+DiskDriver_writeBlock(d->sfs->disk,new_fdb,new_free_block);
+current_dir_block->file_blocks[current_dir_block->num_entries] = new_free_block;
+current_dir_block->num_entries++;
+// TODO: fare caso in cui num_entries > 31
+return 0;
+
+
 }
