@@ -6,8 +6,8 @@
 
 #define MaxDataInFFB BLOCK_SIZE-sizeof(FileControlBlock)-(32*sizeof(int))
 #define MaxInodeInBlock BLOCK_SIZE/sizeof(int)
-#define MaxDataInFDB (BLOCK_SIZE - sizeof(FileControlBlock) - (32*sizeof(int)) -(sizeof(int))) / (sizeof(int))
 #define MaxFileLen 128
+#define MaxFileInDir (BLOCK_SIZE - sizeof(FileControlBlock) - (32*sizeof(int)) -(sizeof(int))) / (sizeof(int))
 
 // this is in the first block of a chain, after the header
 typedef struct {
@@ -57,7 +57,7 @@ typedef struct {
 typedef struct {
   FileControlBlock fcb;
   int num_entries;
-  int file_blocks[ (BLOCK_SIZE - sizeof(FileControlBlock) - (32*sizeof(int)) -(sizeof(int))) / (sizeof(int)) ];
+  int file_blocks[MaxFileInDir];
   int inode_block[32]; //l'ultimo indice deve essere -1 o indice ad un inodeblock
 } FirstDirectoryBlock;
 

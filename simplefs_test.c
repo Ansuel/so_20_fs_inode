@@ -25,37 +25,11 @@ int main(int agc, char **argv) {
 
   DiskDriver *disk = malloc(sizeof(DiskDriver));
 
-  DiskDriver_init(disk, DISK_NAME, 100);
+  DiskDriver_init(disk, DISK_NAME, 10000);
 
   printf("Bitmap Blocks: %d\n", disk->header->bitmap_blocks);
   printf("Bitmap Entires: %d\n", disk->header->bitmap_entries);
   printf("Reserved blocks: %d\n", disk->reserved_blocks);
-
-  // int free_block = DiskDriver_getFreeBlock(disk, 0);
-
-  // ret = DiskDriver_writeBlock(disk, "testTest", free_block);
-  // printf("Caratteri scritti : %d\n", ret);
-
-  // ret = DiskDriver_readBlock(disk, read, free_block);
-  // if (ret)
-  //   printf("Error in read: %d", ret);
-  // else
-  //   printf("Letto : %s\n", read);
-
-  // ret = DiskDriver_getFreeBlock(disk, 0);
-  // printf("Primo blocco libero : %d\n", ret);
-
-  // ret = DiskDriver_freeBlock(disk, free_block);
-
-  // memset(read, 0, BLOCK_SIZE);
-  // ret = DiskDriver_readBlock(disk, read, free_block);
-  // if (ret)
-  //   printf("Error in read: %d\n", ret);
-  // else
-  //   printf("Letto : %s\n", read);
-
-  // ret = DiskDriver_getFreeBlock(disk, 0);
-  // printf("Primo blocco libero : %d\n", ret);
 
   // TEST SIMPLEFS.C
 
@@ -68,33 +42,40 @@ int main(int agc, char **argv) {
 
   FileHandle *file1 = SimpleFS_createFile(dirHandle, "PrimoFile");
   FileHandle *file2 = SimpleFS_createFile(dirHandle, "SecondoFile");
-  SimpleFS_createFile(dirHandle, "TerzoFile");
+  FileHandle *file3 = SimpleFS_createFile(dirHandle, "TerzoFile");
+  FileHandle *file4 = SimpleFS_createFile(dirHandle, "QuartoFile");
+  FileHandle *file5 = SimpleFS_createFile(dirHandle, "QuintoFile");
+  FileHandle *file6 = SimpleFS_createFile(dirHandle, "SestoFile");
+  FileHandle *file7 = SimpleFS_createFile(dirHandle, "SettimoFile");
+  FileHandle *file8 = SimpleFS_createFile(dirHandle, "OttavoFile");
+  FileHandle *file9 = SimpleFS_createFile(dirHandle, "NonoFile");
+  FileHandle *file10 = SimpleFS_createFile(dirHandle, "DecimoFile");
+  int i;
+  for(i = 0; i < 1000; i++){
+    SimpleFS_createFile(dirHandle, "File");
+  }
+
+  FileHandle *ultimo = SimpleFS_createFile(dirHandle, "Ultimo");
+
+  FileHandle* open_file = SimpleFS_openFile(dirHandle, "Ultimo");
+  if(open_file){printf("Trovato");}
+  SimpleFS_write(open_file, "STO FUNZIONANDO", strlen("STO FUNZIONANDO"));
+
+
   printf("Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
 
 
-  char * testText1 = "Test prima scrittura";
-  int written = SimpleFS_write(file1, testText1, strlen(testText1));
-  printf("Scritti n byte: %d\n", written);
-
-  // int fd1 = open("testfi.txt", O_CREAT | O_RDWR, 0777);
-
-  // struct stat statbuf;
-  // fstat(fd1, &statbuf);
-
-  // printf("File grande %ld\n", statbuf.st_size);
-
-  // char * fileDAta = malloc(statbuf.st_size);
-
-  // ret = read(fd1, fileDAta, statbuf.st_size);
-
-  // SimpleFS_write(file2,fileDAta, statbuf.st_size);
-
-  SimpleFS_remove(&fs, "PrimoFile");
-
-  SimpleFS_createFile(dirHandle, "PrimoFileSostitu");
-
-  SimpleFS_mkDir(dirHandle,"NUOVA_DIRECTORY");
-  printf("Dopo mkDir - Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
+  // char * testText1 = "Test prima scrittura";
+  // int written = SimpleFS_write(open_file, testText1, strlen(testText1));
+  // printf("Scritti n byte: %d\n", written);
   
+  // SimpleFS_createFile(dirHandle,"NUOVO FILE");
+  // FileHandle* file = SimpleFS_openFile(dirHandle, "NUOVO FILE");
+  // printf("Dopo mkDir - Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
+  // printf("BHO\n");
+  // SimpleFS_write(file, "STO FUNZIONANDO", strlen("STO FUNZIONANDO"));
+  // printf("Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
+
+
 
 }

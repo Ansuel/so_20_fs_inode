@@ -14,6 +14,7 @@ int SimpleFS_format(SimpleFS *fs) {
   char *tmp = "/";
   memcpy(root.fcb.name, tmp, strlen(tmp));
   root.fcb.is_dir = 1;
+  root.inode_block[31] = -1;
   int ret;
   ret = DiskDriver_writeBlock(fs->disk, &root, 0);
   if (ret)
@@ -47,9 +48,11 @@ DirectoryHandle *SimpleFS_init(SimpleFS *fs, DiskDriver *disk) {
 // an empty file consists only of a block of type FirstBlock
 FileHandle *SimpleFS_createFile(DirectoryHandle *d, const char *filename) {
 
+  FileHandle *file = calloc(1, sizeof(FileHandle));
+
+
   DiskDriver *disk = d->sfs->disk;
   int destBlock = DiskDriver_getFreeBlock(disk, 0);
-  printf("destBlock: %d\n", destBlock);
   FirstFileBlock *ffb = calloc(1, sizeof(FirstFileBlock));
   ffb->fcb.directory_block = d->pos_in_block;
   ffb->fcb.block_in_disk = destBlock;
@@ -59,19 +62,120 @@ FileHandle *SimpleFS_createFile(DirectoryHandle *d, const char *filename) {
   ffb->fcb.is_dir = 0;
 
   DiskDriver_writeBlock(disk, ffb, destBlock);
-  // TODO: quanti elementi abbiamo nel FirstDirectoryBlock?
-  // TODO: se abbiamo più di 31 elementi nella directory, che succede?
   FirstDirectoryBlock *destDir = d->fdb;
-  destDir->file_blocks[destDir->num_entries] = destBlock;
-  destDir->num_entries++;
-  DiskDriver_writeBlock(disk, destDir, d->pos_in_block);
+  // CASO 1: GLI ELEMENTI NELLA DIR SONO MENO DI MaxFileInDir
+  // if(d->fdb->num_entries <= MaxFileInDir){
+    int i;
+    for(i = 0; i < MaxFileInDir; i++){
+      if(destDir->file_blocks[i] == 0){
+        destDir->file_blocks[i] = destBlock;
+        printf("ESCO DAL CASO 1\n");
+        goto exit;
+      }
+    }
 
-  FileHandle *file = calloc(1, sizeof(FileHandle));
+  // CASO 2: GLI ELEMENTI NELLA DIR SONO MAGGIORI DI MaxFileInDir 
+  //         E QUINDI BISOGNA CONTROLLARE SE C'è UN DIRECTORY BLOCK LIBERO
+  //         PER INSERIRE IL NUOVO FILE IN QUEL BLOCCO
+  // CHECK DI TUTTI I BLOCCHI PER TROVARE UNA POSIZIONE LIBERA NEL DIRECTORY_BLOCK
+    DirectoryBlock tmp_block;
+    for(i = 0; i < 31; i++){
+      if(d->fdb->inode_block[i] != 0) {
+      DiskDriver_readBlock(disk, &tmp_block, d->fdb->inode_block[i]);
+      int j;
+      for(j = 0; j < BLOCK_SIZE/sizeof(int); j++){
+        // E' STATO TROVATO UNA POSIZIONE LIBERA NEL DIRECTORY BLOCK
+        if(tmp_block.file_blocks[j] == 0) {
+          tmp_block.file_blocks[j] = destBlock;
+          DiskDriver_writeBlock(disk, &tmp_block, d->fdb->inode_block[i]);
+          printf("ESCO DAL CASO 2\n");
+          goto exit;
+        }
+      }
+      }
+    }
+
+    // SCANSIONE DEI SUCCESSIVI INODEBLOCK, PER TROVARE L'INDIRCE DI UN DIRECTORY_BLOCK
+    // IN CUI VI E' UNA POSIZIONE LIBERA
+    int next_inode_block = d->fdb->inode_block[31];
+    int current_inode_block = -1;
+    InodeBlock tmp_inode_block;
+            printf("next_inode_block: %d\n", next_inode_block);
+
+    // CASO 2.1: SE IL PRIMO INODEBLOCK DOPO IL FIRSTDIRECTORYBLOCK NON C'è ALLOCATO,
+    //           SALTA DIRETTAMENTE ALLA ALLOCAZIONE
+    if(next_inode_block != -1){      
+      while(next_inode_block != -1) {
+        current_inode_block = next_inode_block;
+        DiskDriver_readBlock(disk, &tmp_inode_block, next_inode_block);
+        for(i= 0; i < BLOCK_SIZE/sizeof(int)-1; i++){
+          DiskDriver_readBlock(disk, &tmp_block, d->fdb->inode_block[i]);
+          if(d->fdb->inode_block[i] != 0) {
+          int j;
+          for(j = 0; j < BLOCK_SIZE/sizeof(int); j++){
+            // E' STATO TROVATO UNA POSIZIONE LIBERA NEL DIRECTORY BLOCK
+            if(tmp_block.file_blocks[j] == 0) {
+              tmp_block.file_blocks[j] = destBlock;
+              DiskDriver_writeBlock(disk, &tmp_block, d->fdb->inode_block[i]);
+              printf("ESCO DAL CASO 2.1\n");
+              goto exit;
+            }
+          }
+          }
+        }
+        next_inode_block = tmp_inode_block.inodeList[i];
+      }
+      // CASO 3: NON CI SONO POSIZIONI LIBERE NEI DIRECTORY_BLOCK ESISTENTI
+      //         DI CONSEGUENZA BISOGNA ALLOCARE UN NUOVO DIRECTORY_BLOCK(MA E' PRESENTE
+      //         ALMENO UNA POSIZIONE LIBERA IN UN INODE BLOCK CHE CONTERRA' IL SUO INDICE)
+      for(i= 0; i < BLOCK_SIZE/sizeof(int)-1; i++){
+        // 3.1: ALLOCATO UN NUOVO DIRECTORY BLOCK, E IL SUO INDICE E' STATO MESSO IN UN INODE BLOCK
+        //      GIA' ESISTENTE
+          if(tmp_inode_block.inodeList[i]==0) {
+            DirectoryBlock new_dir_block;
+            new_dir_block.file_blocks[0] = destBlock;
+            int num_block = DiskDriver_getFreeBlock(disk,0);
+            DiskDriver_writeBlock(disk,&new_dir_block,num_block);
+            tmp_inode_block.inodeList[i] = num_block;
+            DiskDriver_writeBlock(disk,&tmp_inode_block,current_inode_block);
+            printf("ESCO DAL CASO 3.1\n");
+
+            goto exit;
+            }
+      }
+    } 
+    // 3.2: NON CI SONO POSIZIONI LIBERE DENTRO UN INODE BLOCK, QUINDI, DEVO ALLOCARE
+    //      UN NUOVO INODE BLOCK PER INSERIRE L'INDICE DEL NUOVO DIRECTORY BLOCK
+
+      InodeBlock new_inode_block;
+      DirectoryBlock new_dir_block;
+      new_dir_block.file_blocks[0] = destBlock;
+      int num_block = DiskDriver_getFreeBlock(disk,0);
+      DiskDriver_writeBlock(disk,&new_dir_block,num_block);
+      new_inode_block.inodeList[0] = num_block;
+      new_inode_block.inodeList[MaxInodeInBlock-1] = -1;
+      num_block = DiskDriver_getFreeBlock(disk,0);
+      DiskDriver_writeBlock(disk,&new_inode_block,num_block);
+      printf("ESCO DAL CASO 3.2\n");
+      // COLLEGO UN INODEBLOCK CON UN ALTRO INODEBLOCK
+      if(current_inode_block != -1) {
+        tmp_inode_block.inodeList[31] = num_block;
+        DiskDriver_writeBlock(disk,&tmp_inode_block,current_inode_block);
+      } else {
+      // ALLOCO IL PRIMO INODEBLOCK COLLEGATO AL FIRST DIRECTORY BLOCK
+        printf("sto allocando un inodeblock: %d\n", num_block);
+        destDir->inode_block[31] = num_block;
+      }
+  
+exit:
+
 
   file->sfs = d->sfs;
   file->ffb = ffb;
   file->directory = destDir;
   file->pos_in_file = 0;
+  destDir->num_entries++; 
+  DiskDriver_writeBlock(disk, destDir, d->pos_in_block);
 
   return file;
 }
@@ -115,7 +219,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
     for (i = 0; i < num_blocks; i++) {
       int freeBlock = DiskDriver_getFreeBlock(disk, 0);
 
-      DiskDriver_writeBlock(disk, data + MaxDataInFDB + (i * BLOCK_SIZE),
+      DiskDriver_writeBlock(disk, data + MaxFileInDir + (i * BLOCK_SIZE),
                             freeBlock);
       ffb->inode_block[i] = freeBlock;
     }
@@ -133,7 +237,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
   for (i = 0; i < 30; i++) {
     int freeBlock = DiskDriver_getFreeBlock(disk, 0);
 
-    DiskDriver_writeBlock(disk, data + MaxDataInFDB + (i * BLOCK_SIZE),
+    DiskDriver_writeBlock(disk, data + MaxFileInDir + (i * BLOCK_SIZE),
                           freeBlock);
     ffb->inode_block[i] = freeBlock;
   }
@@ -155,7 +259,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
     for (i = 0; i < MaxInodeInBlock - 1 && num_blocks >= 0; i++, num_blocks--) {
       int freeBlock = DiskDriver_getFreeBlock(disk, 0);
 
-      ret = DiskDriver_writeBlock(disk, data + MaxDataInFDB + (i * BLOCK_SIZE),
+      ret = DiskDriver_writeBlock(disk, data + MaxFileInDir + (i * BLOCK_SIZE),
                                   freeBlock);
       if (ret)
         return ret;
@@ -284,7 +388,7 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
   memcpy(name, filename, strlen(filename));
 
   // Search in the first file_blocks
-  for (i = 0; i < 31 && i < entries; i++, entries--) {
+  for (i = 0; i < 31 && entries > 0; i++, entries--) {
     block = dir->file_blocks[i];
 
     // We load the block alyeas as a file
@@ -359,7 +463,6 @@ new_dir->pos_in_block = new_free_block;
 
 FirstDirectoryBlock* new_fdb = calloc(1, sizeof(FirstDirectoryBlock));
 new_fdb->fcb.directory_block = d->fdb->fcb.block_in_disk;
-printf("block_in_disk: %d\n",d->fdb->fcb.block_in_disk);
 new_fdb->fcb.block_in_disk = new_dir->pos_in_block;
 char* tmp = calloc(128,sizeof(char));
 memcpy(tmp,dirname,strlen(dirname));
@@ -377,4 +480,86 @@ current_dir_block->num_entries++;
 return 0;
 
 
+}
+
+// opens a file in the  directory d. The file should be exisiting
+FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
+
+  FileHandle* openFile = calloc(1,sizeof(FileHandle));
+
+  FirstFileBlock *file = malloc(sizeof(FirstFileBlock));
+
+  char *name = calloc(MaxFileLen, sizeof(char));
+  memcpy(name, filename, strlen(filename));
+
+  FirstDirectoryBlock* dir = d->fdb;
+  DiskDriver* disk = d->sfs->disk;
+  int entries = dir->num_entries;
+  int i, block, ret;
+  // Search in the first file_blocks
+    printf("entro nel for\n");
+
+  for (i = 0; i < 31 && entries > 0; i++, entries--) {
+    block = dir->file_blocks[i];
+
+    // We load the block alyeas as a file
+    // The fdb has the fcb as first struct elemen so this is not a problem
+    // This is casted to a fdb if is_dir is true in fcb
+    DiskDriver_readBlock(disk, file, block);
+    FileControlBlock fcb = file->fcb;
+    printf("name: %s\n fcb.name: %s\n", name, fcb.name );
+    // Actually search the file
+    if (!memcmp(name, fcb.name, sizeof(char) * MaxFileLen)) {
+      if (fcb.is_dir) {
+        return NULL;
+      } else {
+        openFile->sfs = d->sfs;
+        openFile->ffb = file;
+        openFile->directory = dir;
+        openFile->pos_in_file = 0;
+        return openFile;
+      }
+    }
+  }
+  printf("dopo il for e quindi > 30 inode blcok\n");
+  // Check if we have more than 30 inode block
+  int nextInodeBlock = dir->inode_block[31], inodeIndex;
+  printf("next_inode_block: %d\n", nextInodeBlock);
+  // Loop to clear all blocks declared in inod blocks
+  while (nextInodeBlock != -1) {
+    InodeBlock indexBlock;
+    DiskDriver_readBlock(disk, &indexBlock, nextInodeBlock);
+    for (inodeIndex = 0; inodeIndex < MaxInodeInBlock - 1; inodeIndex++) {
+      if(indexBlock.inodeList[inodeIndex] == 0) { return NULL;}
+      printf("indexBlock.inodeList[inodeIndex] %d\n", indexBlock.inodeList[inodeIndex]);
+      DirectoryBlock tmp_dir;
+      DiskDriver_readBlock(disk,&tmp_dir,indexBlock.inodeList[inodeIndex]);
+      int i;
+      for(i = 0; i < MaxFileInDir && entries > 0; i++, entries--){
+        block = tmp_dir.file_blocks[i];
+
+        DiskDriver_readBlock(disk, file, block);
+        FileControlBlock fcb = file->fcb;
+
+        printf("file numero: %d %s\n",entries,fcb.name);
+        // Actually search the file
+        if (!memcmp(name, fcb.name, sizeof(char) * MaxFileLen)) {
+          if (fcb.is_dir) {
+            return NULL;
+          } else {
+            openFile->sfs = d->sfs;
+            openFile->ffb = file;
+            openFile->directory = dir;
+            openFile->pos_in_file = 0;
+            return openFile;
+          }
+        }
+      }
+    }
+
+    nextInodeBlock = indexBlock.inodeList[MaxInodeInBlock - 1];
+    printf("nextInodeBlock: %d\n", nextInodeBlock );
+
+  } 
+  return NULL;
 }
