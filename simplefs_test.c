@@ -69,14 +69,21 @@ int main(int agc, char **argv) {
 
   printf("Elementi nella dir: %d\n", root->fdb->num_entries);
 
+  printf("La cahin è in %s cartella superiore\n", fs.fdb_chain->current->fcb.name);
+
   ret = SimpleFS_changeDir(root, "NUOVA CARTELLA");
   if(!ret){
     printf("Sono in: %s\n", root->fdb->fcb.name);
     printf("La mia top_level è: %s\n", root->directory->fcb.name);
   }
+
+  printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
+
+
   ret = SimpleFS_mkDir(root, "NUOVA CARTELLA2");
   if(!ret){ printf("cartella creata\n");}
   printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+  
 
   FileHandle *file16 = SimpleFS_createFile(root, "DecimoFile");
 
@@ -88,24 +95,27 @@ int main(int agc, char **argv) {
     printf("La mia top_level è: %s\n", root->directory->fcb.name);
     }
 
-  for(i = 0; i < 4000; i++){
-    char str[128] = {0};
-    // sprintf(str, "File%d",i);
-    ret = SimpleFS_createFile(root, str);
-    if (!ret) return 0;
-  }
+  printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
 
-  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
 
-  for(i = 2000; i < 2020; i++){
-    char str[128] = {0};
-    sprintf(str, "File%d",i);
-    ret = SimpleFS_remove(&fs, str);
-    if (ret) return 0;
-  }
+  // for(i = 0; i < 4000; i++){
+  //   char str[128] = {0};
+  //   // sprintf(str, "File%d",i);
+  //   ret = SimpleFS_createFile(root, str);
+  //   if (!ret) return 0;
+  // }
 
-  printf("Elementi nella dir: %d dir %s\n", root->directory->num_entries, root->directory->fcb.name);
-  printf("Elementi nella dir: %d dir %s\n", root->fdb->num_entries, root->fdb->fcb.name);
-  printf("Elementi nella dir: %d dir %s\n", fs.fdb_top_level_dir->num_entries, fs.fdb_top_level_dir->fcb.name);
+  // printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+
+  // for(i = 2000; i < 2020; i++){
+  //   char str[128] = {0};
+  //   sprintf(str, "File%d",i);
+  //   ret = SimpleFS_remove(&fs, str);
+  //   if (ret) return 0;
+  // }
+
+  // printf("Elementi nella dir: %d dir %s\n", root->directory->num_entries, root->directory->fcb.name);
+  // printf("Elementi nella dir: %d dir %s\n", root->fdb->num_entries, root->fdb->fcb.name);
+  // printf("Elementi nella dir: %d dir %s\n", fs.fdb_top_level_dir->num_entries, fs.fdb_top_level_dir->fcb.name);
 
 }

@@ -69,10 +69,16 @@ typedef struct {
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
 
+typedef struct DirChain {
+  FirstDirectoryBlock* current;
+  struct DirChain* prev;
+} FdbChain;
+
 typedef struct {
   DiskDriver* disk;
   FirstDirectoryBlock* fdb_current_dir;
   FirstDirectoryBlock* fdb_top_level_dir;
+  FdbChain* fdb_chain;
   // add more fields if needed
 } SimpleFS;
 
