@@ -3,7 +3,7 @@
 #include "disk_driver.h"
 
 /*these are structures stored on disk*/
-#define MaxElemInBlock BLOCK_SIZE/sizeof(int)
+#define MaxElemInBlock (BLOCK_SIZE/sizeof(int))
 
 #define MaxFilenameLen 128
 #define MaxFileInDir (BLOCK_SIZE - sizeof(FileControlBlock) - (MaxInodeInFFB*sizeof(int)) -(sizeof(int))) / (sizeof(int))

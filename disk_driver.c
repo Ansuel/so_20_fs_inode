@@ -39,8 +39,7 @@ int DiskDriver_init(DiskDriver *disk, const char *filename, int num_blocks) {
           (num_blocks + MaxBitMapEntryInBlock - 1) / MaxBitMapEntryInBlock;
     }
 
-    header.bitmap_entries =
-        (num_blocks - header.bitmap_blocks - 1) * sizeof(bitmapEntry);
+    header.bitmap_entries = num_blocks - 1 - header.bitmap_blocks;
     header.free_blocks = num_blocks - 1 - header.bitmap_blocks;
     header.first_free_block = 1 + header.bitmap_blocks;
 

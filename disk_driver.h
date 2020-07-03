@@ -3,15 +3,15 @@
 
 #define BLOCK_SIZE 4096
 
-#pragma pack(1)
+// #pragma pack(1)
 typedef struct bitmapEntry
 {
-    unsigned used:1;
+    char used;
 } bitmapEntry;
-#pragma pack(0)
+// #pragma pack(0)
 
 // Every BitMapEntry is 2 bit, we can rapresent 4x block size in one block_size
-#define MaxBitMapEntryInBlock BLOCK_SIZE*4
+#define MaxBitMapEntryInBlock (BLOCK_SIZE / sizeof(char))
 
 // this is stored in the 1st block of the disk
 typedef struct {
