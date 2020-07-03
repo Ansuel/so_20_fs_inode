@@ -42,6 +42,7 @@ int main(int agc, char **argv) {
 
   DirectoryHandle* root = SimpleFS_init(&fs, fs.disk);
 
+  // CREO 10 FILE NELLA ROOT
   FileHandle *file1 = SimpleFS_createFile(root, "PrimoFile");
   FileHandle *file2 = SimpleFS_createFile(root, "SecondoFile");
   FileHandle *file3 = SimpleFS_createFile(root, "TerzoFile");
@@ -52,86 +53,63 @@ int main(int agc, char **argv) {
   FileHandle *file8 = SimpleFS_createFile(root, "OttavoFile");
   FileHandle *file9 = SimpleFS_createFile(root, "NonoFile");
   FileHandle *file10 = SimpleFS_createFile(root, "DecimoFile");
-  int i;
-  // for(i = 0; i < 5000; i++){
-  //   ret = SimpleFS_createFile(root, "File");
-  //   if (!ret) return 0;
-  // }
-
-  // FileHandle *ultimo = SimpleFS_createFile(root, "Ultimo");
-  // FileHandle* open_file = SimpleFS_openFile(root, "Ultimo");
-  // if(open_file){printf("Trovato\n");}
-
-  // printf("Elementi nella dir: %d\n", root->fdb->num_entries);
-
-  ret = SimpleFS_mkDir(root, "NUOVA CARTELLA");
-  if(!ret){ printf("cartella creata\n");}
+ int i;
 
   printf("Elementi nella dir: %d\n", root->fdb->num_entries);
 
-  printf("La cahin è in %s cartella superiore\n", fs.fdb_chain->current->fcb.name);
-
-  ret = SimpleFS_changeDir(root, "NUOVA CARTELLA");
-  if(!ret){
-    printf("Sono in: %s\n", root->fdb->fcb.name);
-    printf("La mia top_level è: %s\n", root->directory->fcb.name);
-  }
-
-  printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
-
-
-  ret = SimpleFS_mkDir(root, "NUOVA CARTELLA2");
-  if(!ret){ printf("cartella creata\n");}
+  // LEGGO QUANTI FILE E I NOMI DEI FILE DELLA ROOT
+  char** names = calloc(root->fdb->num_entries,sizeof(char*));
+  SimpleFS_readDir(names, root);
   printf("Elementi nella dir: %d\n", root->fdb->num_entries);
-  
 
-  FileHandle *file16 = SimpleFS_createFile(root, "DecimoFile");
-
-  printf("Elementi nella dir: %d dir %s\n", root->fdb->num_entries, root->fdb->fcb.name);
-
-  ret = SimpleFS_changeDir(root, "NUOVA CARTELLA2");
-  if(!ret){
-    printf("Sono in: %s\n", root->fdb->fcb.name);
-    printf("La mia top_level è: %s\n", root->directory->fcb.name);
-    }
-
-  printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
-
-  ret = SimpleFS_changeDir(root, "..");
-  if(!ret) {
-      printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
+  for(i = 0; i < root->fdb->num_entries; i++){
+    if(names[i]) printf("file numero: %d\t nome: %s\n", i, names[i]);
   }
 
-  ret = SimpleFS_changeDir(root, "..");
-  if(!ret) {
-      printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
+  // CREO UNA NUOVA CARTELLA E CAMBIO IL DIRHANDLE
+  SimpleFS_mkDir(root,"NUOVA CARTELLA");
+  SimpleFS_changeDir(root, "NUOVA CARTELLA");
+
+  // CREO 4000 FILE NELLA NUOVA CARTELLA
+  for(i = 0; i < 10; i++){
+    char str[128] = {0};
+    sprintf(str, "File%d",i);
+    ret = SimpleFS_createFile(root, str);
+    if (!ret) return 0;
   }
 
-  ret = SimpleFS_changeDir(root, "..");
-  if(!ret) {
-      printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
-  } else {
-    printf("sei un babbo\n");
+  // LEGGO QUANTI FILE E I NOMI DEI FILE NELLA CARTELLA
+  char** namess = calloc(root->fdb->num_entries,sizeof(char*));
+  SimpleFS_readDir(namess, root);
+  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+
+  for(i = 0; i < root->fdb->num_entries; i++){
+    if(namess[i]) printf("file numero: %d\t nome: %s\n", i, namess[i]);
   }
 
-  // for(i = 0; i < 4000; i++){
-  //   char str[128] = {0};
-  //   // sprintf(str, "File%d",i);
-  //   ret = SimpleFS_createFile(root, str);
-  //   if (!ret) return 0;
-  // }
+  // RITORNO NELLA ROOT E CREO 50 FILE
+  SimpleFS_changeDir(root, "..");
+  for(i = 0; i < 10; i++){
+    char str[128] = {0};
+    sprintf(str, "File%d",i);
+    ret = SimpleFS_createFile(root, str);
+    if (!ret) return 0;
+  }
+  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
 
-  // printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+  // LEGGO QUANTI E QULI FILE CI SONO NELLA ROOT
+  char** namesss = calloc(root->fdb->num_entries,sizeof(char*));
+  SimpleFS_readDir(namesss, root);
+  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
 
-  // for(i = 2000; i < 2020; i++){
-  //   char str[128] = {0};
-  //   sprintf(str, "File%d",i);
-  //   ret = SimpleFS_remove(&fs, str);
-  //   if (ret) return 0;
-  // }
+  for(i = 0; i < root->fdb->num_entries; i++){
+    if(namesss[i]) printf("file numero: %d\t nome: %s\n", i, namesss[i]);
+  }
 
-  // printf("Elementi nella dir: %d dir %s\n", root->directory->num_entries, root->directory->fcb.name);
-  // printf("Elementi nella dir: %d dir %s\n", root->fdb->num_entries, root->fdb->fcb.name);
-  // printf("Elementi nella dir: %d dir %s\n", fs.fdb_top_level_dir->num_entries, fs.fdb_top_level_dir->fcb.name);
-
+  SimpleFS_remove(&fs, "PrimoFile");
+  char** namessss = calloc(root->fdb->num_entries,sizeof(char*));
+  SimpleFS_readDir(namesss, root);
+  for(i = 0; i < root->fdb->num_entries; i++){
+    if(namessss[i]) printf("file numero: %d\t nome: %s\n", i, namessss[i]);
+  }
 }

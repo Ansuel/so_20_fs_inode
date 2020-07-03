@@ -376,7 +376,7 @@ int DeleteStoredDir(DiskDriver *disk, FirstDirectoryBlock *dir) {
 
   DirectoryBlock dirBlock;
   // Search in the first inode block in ffb
-  for (i = 0; i < MaxInodeInFFB; i++) {
+  for (i = 0; i < MaxInodeInFFB -1 ; i++) {
     block = dir->inode_block[i];
 
     // Check if inode block exist
@@ -508,7 +508,7 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
 
   DirectoryBlock dirBlock;
   // Search in the first inode block in ffb
-  for (i = 0; i < MaxInodeInFFB; i++) {
+  for (i = 0; i < MaxInodeInFFB -1; i++) {
     inodeBlockNum = dir->inode_block[i];
 
     // Check if inode block exist
@@ -615,7 +615,6 @@ int SimpleFS_mkDir(DirectoryHandle *d, char *dirname) {
 int SimpleFS_changeDir(DirectoryHandle *d, char *dirname) {
 
   if (!strcmp(dirname, "..")) {
-    printf("ENTRO NELLA STRCMP\n");
     FdbChain *prev = d->sfs->fdb_chain->prev;
     if (prev) {
       d->directory = prev->prev ? prev->prev->current : NULL;
@@ -625,7 +624,7 @@ int SimpleFS_changeDir(DirectoryHandle *d, char *dirname) {
       free(d->sfs->fdb_chain);
       d->sfs->fdb_chain = prev;
       return 0;
-    } 
+    }
     return -1;
   }
 
@@ -665,7 +664,7 @@ int SimpleFS_changeDir(DirectoryHandle *d, char *dirname) {
 
   DirectoryBlock dirBlock;
   // Search in the first inode block in ffb
-  for (i = 0; i < MaxInodeInFFB; i++) {
+  for (i = 0; i < MaxInodeInFFB -1; i++) {
     block = dir->inode_block[i];
 
     // Check if inode block exist
@@ -869,4 +868,85 @@ FileHandle *SimpleFS_openFile(DirectoryHandle *d, const char *filename) {
     nextInodeBlock = indexBlock.inodeList[MaxElemInBlock - 1];
   }
   return NULL;
+}
+
+int SimpleFS_readDir(char **names, DirectoryHandle *d) {
+
+  int entries = d->fdb->num_entries;
+  int i, inodeBlockNum, j, found = 0;
+  int block;
+  FirstFileBlock file;
+  DiskDriver *disk = d->sfs->disk;
+  FirstDirectoryBlock *dir = d->fdb;
+
+  for (i = 0; i < MaxFileInDir && found < entries; i++) {
+    // if (names[i]) {
+    block = d->fdb->file_blocks[i];
+    if (block) {
+      // printf("indice i: %d \t found: %d\n", i,found);
+      DiskDriver_readBlock(disk, &file, block);
+      names[found] = malloc(MaxFilenameLen);
+      memcpy(names[found], file.fcb.name, MaxFilenameLen);
+      found++;
+      // printf("indice i: %d \t found: %d\n", i,found);
+
+    }
+  }
+  // }
+
+  DirectoryBlock dirBlock;
+
+  // Search in the first inode block in ffb
+  for (i = 0; i < MaxInodeInFFB -1 ; i++) {
+    inodeBlockNum = dir->inode_block[i];
+
+    // Check if inode block exist
+    if (inodeBlockNum) {
+      // Read the directoryblock linked by the inode
+      DiskDriver_readBlock(disk, &dirBlock, inodeBlockNum);
+      // Check the directoryblock
+      for (j = 0; j < MaxElemInBlock && found < entries; j++) {
+
+        block = dirBlock.file_blocks[j];
+        if (block) {
+          DiskDriver_readBlock(disk, &file, block);
+          names[found] = malloc(MaxFilenameLen);
+          memcpy(names[found], file.fcb.name, MaxFilenameLen);
+          found++;
+        }
+      }
+    }
+  }
+
+  // Check if we have more than 30 inode block
+  int nextInodeBlock = dir->inode_block[MaxInodeInFFB - 1], inodeIndex;
+  InodeBlock inodeBlock;
+
+  // Loop to clear all blocks declared in inod blocks
+  while (nextInodeBlock != -1) {
+
+    DiskDriver_readBlock(disk, &inodeBlock, nextInodeBlock);
+    for (inodeIndex = 0; inodeIndex < MaxElemInBlock - 1; inodeIndex++) {
+
+      inodeBlockNum = inodeBlock.inodeList[i];
+      if (inodeBlockNum) {
+        DiskDriver_readBlock(disk, &dirBlock, inodeBlockNum);
+
+        for (j = 0; j < MaxElemInBlock && found < entries; j++) {
+          block = dirBlock.file_blocks[j];
+
+          if (block) {
+            DiskDriver_readBlock(disk, &file, block);
+            names[found] = malloc(MaxFilenameLen);
+            memcpy(names[found], file.fcb.name, MaxFilenameLen);
+            found++;
+          }
+        }
+      }
+    }
+
+    nextInodeBlock = inodeBlock.inodeList[MaxElemInBlock - 1];
+  }
+
+  return 0;
 }
