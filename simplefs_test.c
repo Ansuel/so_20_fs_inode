@@ -11,12 +11,12 @@
 #define DISK_NAME "test.fs"
 
 int main(int agc, char **argv) {
-  printf("FileControlBlock size %ld\n", sizeof(FileControlBlock));
-  printf("FirstFileBlock size %ld\n", sizeof(FirstFileBlock));
-  printf("InodeBlock size %ld\n", sizeof(InodeBlock));
-  printf("FileBlock size %ld\n", sizeof(FileBlock));
-  printf("FirstDirectoryBlock size %ld\n", sizeof(FirstDirectoryBlock));
-  printf("DirectoryBlock size %ld\n", sizeof(DirectoryBlock));
+  // printf("FileControlBlock size %ld\n", sizeof(FileControlBlock));
+  // printf("FirstFileBlock size %ld\n", sizeof(FirstFileBlock));
+  // printf("InodeBlock size %ld\n", sizeof(InodeBlock));
+  // printf("FileBlock size %ld\n", sizeof(FileBlock));
+  // printf("FirstDirectoryBlock size %ld\n", sizeof(FirstDirectoryBlock));
+  // printf("DirectoryBlock size %ld\n", sizeof(DirectoryBlock));
   // TEST DISK_DRIVER.C
 
   int ret;
@@ -25,7 +25,7 @@ int main(int agc, char **argv) {
 
   DiskDriver *disk = malloc(sizeof(DiskDriver));
 
-  DiskDriver_init(disk, DISK_NAME, 100000);
+  DiskDriver_init(disk, DISK_NAME, 10000);
 
   printf("Bitmap Blocks: %d\n", disk->header->bitmap_blocks);
   printf("Bitmap Entires: %d\n", disk->header->bitmap_entries);
@@ -38,48 +38,52 @@ int main(int agc, char **argv) {
   ret = SimpleFS_format(&fs);
   if (ret) return -1;
 
-  DirectoryHandle* dirHandle = SimpleFS_init(&fs, fs.disk);
+  DirectoryHandle* root = SimpleFS_init(&fs, fs.disk);
 
-  FileHandle *file1 = SimpleFS_createFile(dirHandle, "PrimoFile");
-  FileHandle *file2 = SimpleFS_createFile(dirHandle, "SecondoFile");
-  FileHandle *file3 = SimpleFS_createFile(dirHandle, "TerzoFile");
-  FileHandle *file4 = SimpleFS_createFile(dirHandle, "QuartoFile");
-  FileHandle *file5 = SimpleFS_createFile(dirHandle, "QuintoFile");
-  FileHandle *file6 = SimpleFS_createFile(dirHandle, "SestoFile");
-  FileHandle *file7 = SimpleFS_createFile(dirHandle, "SettimoFile");
-  FileHandle *file8 = SimpleFS_createFile(dirHandle, "OttavoFile");
-  FileHandle *file9 = SimpleFS_createFile(dirHandle, "NonoFile");
-  FileHandle *file10 = SimpleFS_createFile(dirHandle, "DecimoFile");
+  FileHandle *file1 = SimpleFS_createFile(root, "PrimoFile");
+  FileHandle *file2 = SimpleFS_createFile(root, "SecondoFile");
+  FileHandle *file3 = SimpleFS_createFile(root, "TerzoFile");
+  FileHandle *file4 = SimpleFS_createFile(root, "QuartoFile");
+  FileHandle *file5 = SimpleFS_createFile(root, "QuintoFile");
+  FileHandle *file6 = SimpleFS_createFile(root, "SestoFile");
+  FileHandle *file7 = SimpleFS_createFile(root, "SettimoFile");
+  FileHandle *file8 = SimpleFS_createFile(root, "OttavoFile");
+  FileHandle *file9 = SimpleFS_createFile(root, "NonoFile");
+  FileHandle *file10 = SimpleFS_createFile(root, "DecimoFile");
   int i;
-  for(i = 0; i < 50000; i++){
-    ret = SimpleFS_createFile(dirHandle, "File");
-    if (!ret) return 0;
-  }
+  // for(i = 0; i < 5000; i++){
+  //   ret = SimpleFS_createFile(root, "File");
+  //   if (!ret) return 0;
+  // }
 
-  // FileHandle *ultimo1 = SimpleFS_createFile(dirHandle, "penUltimo");
-  FileHandle *ultimo = SimpleFS_createFile(dirHandle, "Ultimo");
-
-  // FileHandle* open_file1 = SimpleFS_openFile(dirHandle, "penUltimo");
-  FileHandle* open_file = SimpleFS_openFile(dirHandle, "Ultimo");
+  FileHandle *ultimo = SimpleFS_createFile(root, "Ultimo");
+  FileHandle* open_file = SimpleFS_openFile(root, "Ultimo");
   if(open_file){printf("Trovato\n");}
-  // SimpleFS_write(open_file, "STO FUNZIONANDO", strlen("STO FUNZIONANDO"));
 
-  // FileHandle* open_file2 = SimpleFS_openFile(dirHandle, "PrimoFile");
+  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
 
-  printf("Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
+  ret = SimpleFS_mkDir(root, "NUOVA CARTELLA");
+  if(!ret){ printf("cartella creata\n");}
 
 
-  // char * testText1 = "Test prima scrittura";
-  // int written = SimpleFS_write(open_file, testText1, strlen(testText1));
-  // printf("Scritti n byte: %d\n", written);
-  
-  // SimpleFS_createFile(dirHandle,"NUOVO FILE");
-  // FileHandle* file = SimpleFS_openFile(dirHandle, "NUOVO FILE");
-  // printf("Dopo mkDir - Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
-  // printf("BHO\n");
-  // SimpleFS_write(file, "STO FUNZIONANDO", strlen("STO FUNZIONANDO"));
-  // printf("Elementi nella dir: %d\n", dirHandle->fdb->num_entries);
 
+  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+
+  ret = SimpleFS_changeDir(root, "NUOVA CARTELLA");
+  if(!ret){
+    printf("Sono in: %s\n", root->fdb->fcb.name);
+    printf("La mia top_level è: %s\n", root->directory->fcb.name);
+  }
+  ret = SimpleFS_mkDir(root, "NUOVA CARTELLA2");
+  if(!ret){ printf("cartella creata\n");}
+  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+
+
+  ret = SimpleFS_changeDir(root, "NUOVA CARTELLA2");
+  if(!ret){
+    printf("Sono in: %s\n", root->fdb->fcb.name);
+    printf("La mia top_level è: %s\n", root->directory->fcb.name);
+    }
 
 
 }
