@@ -55,12 +55,9 @@ int main(int agc, char **argv) {
   FileHandle *file10 = SimpleFS_createFile(root, "DecimoFile");
  int i;
 
-  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
-
   // LEGGO QUANTI FILE E I NOMI DEI FILE DELLA ROOT
   char** names = calloc(root->fdb->num_entries,sizeof(char*));
   SimpleFS_readDir(names, root);
-  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
 
   for(i = 0; i < root->fdb->num_entries; i++){
     if(names[i]) printf("file numero: %d\t nome: %s\n", i, names[i]);
@@ -68,6 +65,7 @@ int main(int agc, char **argv) {
 
   // CREO UNA NUOVA CARTELLA E CAMBIO IL DIRHANDLE
   SimpleFS_mkDir(root,"NUOVA CARTELLA");
+  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
   SimpleFS_changeDir(root, "NUOVA CARTELLA");
 
   // CREO 4000 FILE NELLA NUOVA CARTELLA
@@ -78,6 +76,9 @@ int main(int agc, char **argv) {
     if (!ret) return 0;
   }
 
+  printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+
+
   // LEGGO QUANTI FILE E I NOMI DEI FILE NELLA CARTELLA
   char** namess = calloc(root->fdb->num_entries,sizeof(char*));
   SimpleFS_readDir(namess, root);
@@ -87,7 +88,7 @@ int main(int agc, char **argv) {
     if(namess[i]) printf("file numero: %d\t nome: %s\n", i, namess[i]);
   }
 
-  // RITORNO NELLA ROOT E CREO 50 FILE
+  // // RITORNO NELLA ROOT E CREO 50 FILE
   SimpleFS_changeDir(root, "..");
   for(i = 0; i < 10; i++){
     char str[128] = {0};
@@ -108,8 +109,16 @@ int main(int agc, char **argv) {
 
   SimpleFS_remove(&fs, "PrimoFile");
   char** namessss = calloc(root->fdb->num_entries,sizeof(char*));
-  SimpleFS_readDir(namesss, root);
+  SimpleFS_readDir(namessss, root);
   for(i = 0; i < root->fdb->num_entries; i++){
     if(namessss[i]) printf("file numero: %d\t nome: %s\n", i, namessss[i]);
   }
+
+  SimpleFS_remove(&fs, "NUOVA CARTELLA");
+  namessss = calloc(root->fdb->num_entries,sizeof(char*));
+  SimpleFS_readDir(namessss, root);
+  for(i = 0; i < root->fdb->num_entries; i++){
+    if(namessss[i]) printf("file numero: %d\t nome: %s\n", i, namessss[i]);
+  }
+
 }
