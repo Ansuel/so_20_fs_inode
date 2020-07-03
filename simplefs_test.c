@@ -97,6 +97,22 @@ int main(int agc, char **argv) {
 
   printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
 
+  ret = SimpleFS_changeDir(root, "..");
+  if(!ret) {
+      printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
+  }
+
+  ret = SimpleFS_changeDir(root, "..");
+  if(!ret) {
+      printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
+  }
+
+  ret = SimpleFS_changeDir(root, "..");
+  if(!ret) {
+      printf("La cahin è in %s cartella superiore %s\n", fs.fdb_chain->current->fcb.name, fs.fdb_chain->prev ? fs.fdb_chain->prev->current->fcb.name : "NULL");
+  } else {
+    printf("sei un babbo\n");
+  }
 
   // for(i = 0; i < 4000; i++){
   //   char str[128] = {0};

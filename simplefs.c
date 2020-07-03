@@ -40,7 +40,7 @@ DirectoryHandle *SimpleFS_init(SimpleFS *fs, DiskDriver *disk) {
   dir->pos_in_block = 0;
   dir->pos_in_dir = 0;
 
-  FdbChain* first_chain = calloc(1, sizeof(FdbChain));
+  FdbChain *first_chain = calloc(1, sizeof(FdbChain));
   first_chain->current = firstDir;
 
   fs->fdb_chain = first_chain;
@@ -614,7 +614,22 @@ int SimpleFS_mkDir(DirectoryHandle *d, char *dirname) {
 
 int SimpleFS_changeDir(DirectoryHandle *d, char *dirname) {
 
-  FirstDirectoryBlock *parent = d->directory;
+  if (!strcmp(dirname, "..")) {
+    printf("ENTRO NELLA STRCMP\n");
+    FdbChain *prev = d->sfs->fdb_chain->prev;
+    if (prev) {
+      d->directory = prev->prev ? prev->prev->current : NULL;
+      d->fdb = prev->current;
+      d->pos_in_dir = 0;
+      d->pos_in_block = prev->current->fcb.block_in_disk;
+      free(d->sfs->fdb_chain);
+      d->sfs->fdb_chain = prev;
+      return 0;
+    } 
+    return -1;
+  }
+
+  // FirstDirectoryBlock *parent = d->directory;
   int ret = -1;
 
   DiskDriver *disk = d->sfs->disk;
@@ -717,8 +732,6 @@ int SimpleFS_changeDir(DirectoryHandle *d, char *dirname) {
 
 exit:
 
-  
-
   // if (parent && parent != d->sfs->fdb_top_level_dir) {
   //   free(parent);
   // }
@@ -733,7 +746,7 @@ exit:
   free(name);
 
   // Allocazione della catena di directory
-  FdbChain* new_chain = calloc(1, sizeof(FdbChain));
+  FdbChain *new_chain = calloc(1, sizeof(FdbChain));
   new_chain->current = d->fdb;
   new_chain->prev = d->sfs->fdb_chain;
   d->sfs->fdb_chain = new_chain;
