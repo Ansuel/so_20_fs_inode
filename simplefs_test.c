@@ -120,5 +120,18 @@ int main(int agc, char **argv) {
   for(i = 0; i < root->fdb->num_entries; i++){
     if(namessss[i]) printf("file numero: %d\t nome: %s\n", i, namessss[i]);
   }
+  ret = SimpleFS_changeDir(root, "NUOVA CARTELLA");
+  printf("%d\n",ret);
+
+  int stampa = 4500000;
+  char* data = calloc(stampa,sizeof(char));
+  memset(data,'A',stampa);
+  data[stampa-1] = 'B';
+  ret = SimpleFS_write(file5,data,stampa);
+  printf("written: %d\n", ret);
+  char* buf = calloc(stampa,sizeof(char));
+  ret = SimpleFS_read(file5,buf,stampa);
+  printf("bytes_read = %d\n Ultima lettera: %c\n",ret,buf[stampa-1]);
+
 
 }

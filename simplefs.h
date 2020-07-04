@@ -8,7 +8,7 @@
 #define MaxFilenameLen 128
 #define MaxFileInDir (BLOCK_SIZE - sizeof(FileControlBlock) - (MaxInodeInFFB*sizeof(int)) -(sizeof(int))) / (sizeof(int))
 #define MaxDataInFFB (BLOCK_SIZE-sizeof(FileControlBlock)-(MaxInodeInFFB*sizeof(int)))
-
+#define MaxDataInBlock (BLOCK_SIZE/sizeof(char))
 #define MaxInodeInFFB 32
 
 // this is in the first block of a chain, after the header

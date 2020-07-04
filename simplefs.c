@@ -221,7 +221,7 @@ FileHandle *SimpleFS_createFile(DirectoryHandle *d, const char *filename) {
 // overwriting and allocating new space if necessary
 // returns the number of bytes written
 int SimpleFS_write(FileHandle *f, void *data, int size) {
-
+  int written_bytes = 0;
   int ret;
   FirstFileBlock *ffb = f->ffb;
   DiskDriver *disk = f->sfs->disk;
@@ -241,78 +241,75 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
     return size;
   }
 
-  int remainingData = size - MaxDataInFFB;
-
-  int num_blocks = (remainingData + BLOCK_SIZE - 1) / BLOCK_SIZE;
+  int num_blocks = ((size - MaxDataInFFB) + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
   memcpy(ffb->data, data, MaxDataInFFB);
   ffb->fcb.size_in_bytes = size;
   ffb->fcb.size_in_blocks = num_blocks + 1;
+  written_bytes += MaxDataInFFB;
 
   int i;
-
+  char *tmp_buf;
+  printf("Num_blocks :%d\n Written_bytes: %d\n", num_blocks, written_bytes);
   // I blocchi da scrivere necessari entrano in un FFB
-  if (num_blocks <= 31) {
-    for (i = 0; i < num_blocks; i++) {
-      int freeBlock = DiskDriver_getFreeBlock(disk, 0);
-
-      DiskDriver_writeBlock(disk, data + MaxFileInDir + (i * BLOCK_SIZE),
-                            freeBlock);
-      ffb->inode_block[i] = freeBlock;
-    }
-
-    DiskDriver_writeBlock(disk, ffb, ffb->fcb.block_in_disk);
-
-    return size;
-  }
-
-  // Caso 3 i blocchi da scrivere hanno bisogno di più di 31 inode
-  int InodeBlockToAlloc =
-      (((num_blocks - 31) + (BLOCK_SIZE / sizeof(int)) - 1) /
-       (BLOCK_SIZE / sizeof(int)));
-
-  for (i = 0; i < 30; i++) {
+  for (i = 0; i < MaxInodeInFFB -1 && num_blocks > 0; i++) {
     int freeBlock = DiskDriver_getFreeBlock(disk, 0);
-
-    DiskDriver_writeBlock(disk, data + MaxFileInDir + (i * BLOCK_SIZE),
-                          freeBlock);
+    num_blocks--;
+    if (num_blocks == 0) {
+      tmp_buf = calloc(MaxDataInBlock, sizeof(char));
+      memcpy(tmp_buf, data + written_bytes, size - written_bytes);
+      written_bytes += size - written_bytes;
+    } else {
+      tmp_buf = data + written_bytes;
+      written_bytes += MaxDataInBlock;
+    }
+    DiskDriver_writeBlock(disk, tmp_buf, freeBlock);
     ffb->inode_block[i] = freeBlock;
+    // printf("Num_block :%d \t Written_bytes: %d\n", num_blocks, written_bytes);
   }
 
-  int inodeBlock;
-  InodeBlock blockIndex = {0}, lastblockIndex = {0};
+  InodeBlock LastInodeBlock;
+  int lastIndex;
+  while (num_blocks > 0) {
+    // Caso 3 i blocchi da scrivere hanno bisogno di più di 31 inode
 
-  for (inodeBlock = 0; inodeBlock < InodeBlockToAlloc; inodeBlock++) {
-    int freeInodeBlock = DiskDriver_getFreeBlock(disk, 0);
+    int new_free_block = DiskDriver_getFreeBlock(disk, 0);
+    InodeBlock new_inode_block = {0};
 
-    // Set the last inode block to the conseguent inodeBlock
-    if (ffb->inode_block[MaxInodeInFFB - 1] == -1)
-      ffb->inode_block[MaxInodeInFFB - 1] = freeInodeBlock;
-
-    // Connect the last inode block to the new one
-    if (lastblockIndex.inodeList[MaxElemInBlock - 1] == -1)
-      lastblockIndex.inodeList[MaxElemInBlock - 1] = freeInodeBlock;
-
-    for (i = 0; i < MaxElemInBlock - 1 && num_blocks >= 0; i++, num_blocks--) {
+    for (i = 0; i < MaxElemInBlock && num_blocks > 0; i++) {
       int freeBlock = DiskDriver_getFreeBlock(disk, 0);
 
-      ret = DiskDriver_writeBlock(disk, data + MaxFileInDir + (i * BLOCK_SIZE),
-                                  freeBlock);
-      if (ret)
-        return ret;
-      blockIndex.inodeList[i] = freeBlock;
+      num_blocks--;
+
+      if (num_blocks == 0) {
+        tmp_buf = calloc(MaxDataInBlock, sizeof(char));
+        memcpy(tmp_buf, data + written_bytes, size - written_bytes);
+        written_bytes += size - written_bytes;
+      } else {
+        tmp_buf = data + written_bytes;
+        written_bytes += MaxDataInBlock;
+      }
+      DiskDriver_writeBlock(disk, tmp_buf, freeBlock);
+      new_inode_block.inodeList[i] = freeBlock;
     }
+    // FirstInodeBlock need to link the inodeblock to ffb
+    if (ffb->inode_block[31] == -1) {
+      ffb->inode_block[31] = new_free_block;
+    } else {
+      DiskDriver_readBlock(disk, &LastInodeBlock, lastIndex);
+      LastInodeBlock.inodeList[MaxElemInBlock - 1] = new_free_block;
+      DiskDriver_writeBlock(disk, &LastInodeBlock, lastIndex);
+    }
+    new_inode_block.inodeList[MaxElemInBlock-1] = -1;
+    DiskDriver_writeBlock(disk, &new_inode_block, new_free_block);
+        printf("last index : %d new_free_block: %d\n",lastIndex,new_free_block);
 
-    blockIndex.inodeList[MaxElemInBlock - 1] = -1;
-
-    DiskDriver_writeBlock(disk, &blockIndex, freeInodeBlock);
-
-    lastblockIndex = blockIndex;
+    lastIndex = new_free_block;
   }
-
+  
   DiskDriver_writeBlock(disk, ffb, ffb->fcb.block_in_disk);
 
-  return size;
+  return written_bytes;
 }
 
 int DeleteStoredFile(DiskDriver *disk, FirstFileBlock *file) {
@@ -1018,4 +1015,73 @@ int SimpleFS_readDir(char **names, DirectoryHandle *d) {
   }
 
   return 0;
+}
+
+int SimpleFS_read(FileHandle *f, void *data, int size) {
+
+  DiskDriver *disk = f->sfs->disk;
+  int bytes_read = 0;
+  int i, inodeBlockNum;
+  FirstFileBlock *ffb = f->ffb;
+  int block_to_read;
+  if (size < MaxDataInFFB) {
+    memcpy(data, ffb->data, size);
+    return size;
+  }
+
+  memcpy(data, ffb->data, MaxDataInFFB);
+  bytes_read += MaxDataInFFB;
+
+  FileBlock fileBlock;
+  block_to_read = (size - bytes_read + MaxDataInBlock - 1) / MaxDataInBlock;
+  printf("block to read %d\n", block_to_read);
+
+  // Search in the first inode block in ffb
+  for (i = 0; i < MaxInodeInFFB - 1 && block_to_read > 0; i++) {
+    inodeBlockNum = ffb->inode_block[i];
+
+    // Check if inode block exist
+    if (inodeBlockNum) {
+      // Read the directoryblock linked by the inode
+      DiskDriver_readBlock(disk, &fileBlock, inodeBlockNum);
+      block_to_read--;
+      if (block_to_read > 0) {
+        memcpy(data + bytes_read, &fileBlock, MaxDataInBlock);
+        bytes_read += MaxDataInBlock;
+      } else {
+        memcpy(data + bytes_read, &fileBlock, size - bytes_read);
+        bytes_read += size - bytes_read;
+      }
+    }
+  }
+
+  // Check if we have more than 30 inode block
+  int nextInodeBlock = ffb->inode_block[MaxInodeInFFB - 1], inodeIndex;
+  InodeBlock inodeBlock;
+
+  // Loop to clear all blocks declared in inod blocks
+  while (nextInodeBlock != -1) {
+
+    DiskDriver_readBlock(disk, &inodeBlock, nextInodeBlock);
+    for (inodeIndex = 0; inodeIndex < MaxElemInBlock - 1 && block_to_read > 0; inodeIndex++) {
+      inodeBlockNum = inodeBlock.inodeList[inodeIndex];
+      if (inodeBlockNum) {
+        // Read the directoryblock linked by the inode
+        DiskDriver_readBlock(disk, &fileBlock, inodeBlock.inodeList[inodeIndex]);
+        block_to_read--;
+        if (block_to_read > 0) {
+          memcpy(data + bytes_read, &fileBlock, MaxDataInBlock);
+          bytes_read += MaxDataInBlock;
+        } else {
+          memcpy(data + bytes_read, &fileBlock, size - bytes_read);
+          bytes_read += size - bytes_read;
+        }
+          // printf("Num_blocks :%d Written_bytes: %d inodeindex: %d InodeBlockNum: %d\n", block_to_read,bytes_read,inodeIndex, inodeBlockNum );
+      }
+    }
+    printf("last index : %d\n",nextInodeBlock);
+    nextInodeBlock = inodeBlock.inodeList[MaxElemInBlock - 1];
+    
+  }
+  return bytes_read;
 }
