@@ -82,12 +82,20 @@ typedef struct {
   // add more fields if needed
 } SimpleFS;
 
+enum block_types {
+  FFB,
+  InodeBlockFFB,
+  ExternalInodeBlock
+};
+
 // this is a file handle, used to refer to open files
 typedef struct {
   SimpleFS* sfs;                   // pointer to memory file system structure
   FirstFileBlock* ffb;             // pointer to the first block of the file(read it)
   FirstDirectoryBlock* directory;  // pointer to the directory where the file is stored
   // BlockHeader* current_block;      // current block in the file
+  int pos_in_block;                // block where is present the cursor
+  enum block_types pos_in_block_type;          // type of block of the cursor
   int pos_in_file;                 // position of the cursor
 } FileHandle;
 

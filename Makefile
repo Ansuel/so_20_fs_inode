@@ -28,7 +28,7 @@ so_game: simplefs_test.c $(OBJS)
 	$(CC) $(CCOPTS)  -o $@ $^ $(LIBS)
 
 test:	simplefs_test.c $(OBJS) 
-	$(CC) $(CCOPTS)  -o $@ $^ $(LIBS)
+	$(CC) $(CCOPTS)  -o $@ $^ $(LIBS) -lm
 	rm test.fs
 
 clean:
