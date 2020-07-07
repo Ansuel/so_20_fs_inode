@@ -1560,3 +1560,12 @@ exit:
 
   return 0;
 }
+
+// closes a file handle (destroyes it)
+int SimpleFS_close(FileHandle* f){
+
+  free(f->ffb);
+  free(f);
+  return 0;
+
+}

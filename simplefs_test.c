@@ -53,6 +53,7 @@ int main(int agc, char **argv) {
    */
 
   FileHandle *f = SimpleFS_createFile(root, "File");
+  FileHandle *f1 = SimpleFS_createFile(root, "File1");
 
   int len = 10000000;
   // int i;
@@ -125,6 +126,7 @@ int main(int agc, char **argv) {
   printf("letto: %s\n", buf);
   printf("\n");
 
-
-
+  ret = SimpleFS_close(f1);
+  printf("closato %p\n", f1);
+  
 }
