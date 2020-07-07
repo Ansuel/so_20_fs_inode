@@ -155,9 +155,9 @@ int DiskDriver_getFreeBlock(DiskDriver *disk, int start) {
 
 int DiskDriver_flush(DiskDriver *disk) {
   int ret;
-  ret = munmap(disk->header, sizeof(DiskHeader *));
-  if(ret) return handle_error("Error in munmap: ", ret); 
   ret = munmap(disk->bitmap_data, sizeof(char) * disk->header->bitmap_blocks);
+  if(ret) return handle_error("Error in munmap: ", ret); 
+  ret = munmap(disk->header, sizeof(DiskHeader *));
   if(ret) return handle_error("Error in munmap: ", ret);
 
   return 0;

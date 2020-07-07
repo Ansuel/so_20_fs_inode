@@ -48,6 +48,22 @@ DirectoryHandle *SimpleFS_init(SimpleFS *fs, DiskDriver *disk) {
   return dir;
 }
 
+int SimpleFS_unload(SimpleFS * fs, DirectoryHandle * root) {
+
+  FdbChain *chain = fs->fdb_chain,* prevChain;
+
+  while (chain) {
+    free(chain->current);
+    prevChain = chain->prev;
+    free(chain);
+    chain = prevChain;
+  }
+
+  free(root);
+
+  return 0;
+}
+
 // creates an empty file in the directory d
 // returns null on error (file existing, no free blocks)
 // an empty file consists only of a block of type FirstBlock

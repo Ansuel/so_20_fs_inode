@@ -22,8 +22,6 @@ int main(int agc, char **argv) {
   printf("MaxFileInDir: %ld\n", MaxFileInDir);
 
   int ret;
-  char *readed = calloc(BLOCK_SIZE, sizeof(char));
-  memset(readed, 0, BLOCK_SIZE);
 
   DiskDriver *disk = malloc(sizeof(DiskDriver));
 
@@ -73,7 +71,7 @@ int main(int agc, char **argv) {
 
   SimpleFS_seek(f, seekOffset);
 
-  char * buf = calloc(strlen(text)+1, sizeof(char));
+  char * buf = calloc(strlen(text), sizeof(char));
 
   ret = SimpleFS_write(f, text, strlen(text));
   printf("Scritti %d bytes len: %ld\n", ret, strlen(text));
@@ -83,7 +81,7 @@ int main(int agc, char **argv) {
   ret = SimpleFS_read(f, buf, strlen(text));
   printf("Letti %d bytes\n", ret);
 
-  printf("letto: %s\n", buf);
+  // printf("letto: %s\n", buf);
 
   printf("\n");
 
@@ -127,6 +125,16 @@ int main(int agc, char **argv) {
   printf("\n");
 
   ret = SimpleFS_close(f1);
-  printf("closato %p\n", f1);
+  SimpleFS_close(f);
+
+  free(buf);
+  free(text);
+  free(tmp_buf);
   
+  DiskDriver_flush(disk);
+
+  SimpleFS_unload(&fs, root);
+
+
+  free(disk);
 }

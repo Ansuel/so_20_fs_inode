@@ -112,6 +112,9 @@ typedef struct {
 // returns a handle to the top level directory stored in the first block
 DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk);
 
+// Unload the SimpleFS allocated
+int SimpleFS_unload(SimpleFS* fs, DirectoryHandle * root);
+
 // creates the inital structures, the top level directory
 // has name "/" and its control block is in the first position
 // it also clears the bitmap of occupied blocks on the disk
