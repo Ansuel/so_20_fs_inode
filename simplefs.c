@@ -218,7 +218,7 @@ FileHandle *SimpleFS_createFile(DirectoryHandle *d, const char *filename) {
 }
 
 /*  Write to internal inode starting from StartIndex
- * 
+ *
  * *f: FileHandle of the file to write data
  * *data: data to read from
  * size: size of the data to write
@@ -226,7 +226,7 @@ FileHandle *SimpleFS_createFile(DirectoryHandle *d, const char *filename) {
  * *num_blocks: pointer to the num blocks left to write
  * *written_bytes: pointer to the bytes left to write
  * *written_blocks: pointer to the blocks written
- * 
+ *
  * returns: 0 if successful, -1 on error
  */
 int writeToInternalNode(FileHandle *f, void *data, int size, int startIndex,
@@ -279,7 +279,7 @@ int writeToInternalNode(FileHandle *f, void *data, int size, int startIndex,
 }
 
 /*  Write in the ExternalInodeBlock
- * 
+ *
  * *currInode: pointer to the current inodeBlock to read block from
  * *disk: disk to use to read and write data from
  * startFrom: index to start writing data in the externalInode
@@ -288,7 +288,7 @@ int writeToInternalNode(FileHandle *f, void *data, int size, int startIndex,
  * *num_blocks: pointer to the num blocks left to write
  * *written_bytes: pointer to the bytes left to write
  * *written_blocks: pointer to the blocks written
- * 
+ *
  * returns: 1 if new blocks are allocated else 0
  */
 int writeInExternalInodeBlock(InodeBlock *currInode, DiskDriver *disk,
@@ -336,16 +336,16 @@ int writeInExternalInodeBlock(InodeBlock *currInode, DiskDriver *disk,
 }
 
 /*  Write to external inode starting from succInodeBlockNum
- * 
+ *
  * *f: FileHandle of the file to write data
  * *data: data to read from
  * size: size of the data to write
  * succInodeBlockNum: num of External InodeBlock to start write data
- * prevInodeBlockNum: num of prev ExternalInodeBlock 
+ * prevInodeBlockNum: num of prev ExternalInodeBlock
  * *num_blocks: pointer to the num blocks left to write
  * *written_bytes: pointer to the bytes left to write
  * *written_blocks: pointer to the blocks written
- * 
+ *
  * returns: 0 if successful, -1 on error
  */
 int writeToExternalINode(FileHandle *f, void *data, int size,
@@ -523,7 +523,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
     int offsetInBlock = absOffsetBlock % MaxDataInBlock;
 
     // Calc num blocks to write
-    num_blocks = (size - + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    num_blocks = (size - +BLOCK_SIZE - 1) / BLOCK_SIZE;
 
     // Start the skipping process
     // Take the linked node from FFB
@@ -558,7 +558,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
       targetBlock = currInode.inodeList[offsetBlock];
 
       if (offsetBlock < MaxElemInBlock - 1) {
-        
+
         char *tmp_file = calloc(MaxDataInBlock, sizeof(char));
         // Calc data to write in the targetBlock
         int dataToWrite = (offsetInBlock + size) > MaxDataInBlock
@@ -591,7 +591,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
 
       prevInodeBlock = currentInodeIndex;
       currentInodeIndex = currInode.inodeList[MaxElemInBlock - 1];
-    } 
+    }
 
     writeToExternalINode(f, data, size, currentInodeIndex, prevInodeBlock,
                          &num_blocks, &written_bytes, &written_blocks);
@@ -1314,75 +1314,215 @@ int SimpleFS_readDir(char **names, DirectoryHandle *d) {
   return 0;
 }
 
-int SimpleFS_read(FileHandle *f, void *data, int size) {
+/*  Read in external inode starting from startFrom
+ *
+ * *disk: disk to read data from
+ * *inodeBlock: Inodeblock to read fileBlock from
+ * *blockToRead: pointer to the number block to read
+ *  size: size of the data to read
+ * *data: pointer to write data in
+ *  startFrom: num of External InodeBlock to start read data
+ * *bytes_read: pointer to the bytes readed
+ *
+ * returns: 0 if successful, -1 on error
+ */
+int readDataFromExternalInode(DiskDriver *disk, InodeBlock *inodeBlock,
+                              int *blockToRead, int size, void *data,
+                              int startFrom, int *bytes_read) {
 
-  DiskDriver *disk = f->sfs->disk;
-  int bytes_read = 0;
   int i, inodeBlockNum;
-  FirstFileBlock *ffb = f->ffb;
-  int block_to_read;
-  if (size < MaxDataInFFB) {
-    memcpy(data, ffb->data, size);
-    return size;
-  }
-
-  memcpy(data, ffb->data, MaxDataInFFB);
-  bytes_read += MaxDataInFFB;
-
   FileBlock fileBlock;
-  block_to_read = (size - bytes_read + MaxDataInBlock - 1) / MaxDataInBlock;
-  // printf("blocks to read %d\n", block_to_read);
 
-  // Search in the first inode block in ffb
-  for (i = 0; i < MaxInodeInFFB - 1 && block_to_read > 0; i++) {
-    inodeBlockNum = ffb->inode_block[i];
-
-    // Check if inode block exist
+  for (i = startFrom; i < MaxElemInBlock - 1 && *blockToRead > 0; i++) {
+    inodeBlockNum = inodeBlock->inodeList[i];
     if (inodeBlockNum) {
       // Read the directoryblock linked by the inode
       DiskDriver_readBlock(disk, &fileBlock, inodeBlockNum);
-      block_to_read--;
-      if (block_to_read > 0) {
-        memcpy(data + bytes_read, &fileBlock, MaxDataInBlock);
-        bytes_read += MaxDataInBlock;
+      *blockToRead -= 1;
+      if (*blockToRead > 0) {
+        memcpy(data + *bytes_read, &fileBlock, MaxDataInBlock);
+        *bytes_read += MaxDataInBlock;
       } else {
-        memcpy(data + bytes_read, &fileBlock, size - bytes_read);
-        bytes_read += size - bytes_read;
+        memcpy(data + *bytes_read, &fileBlock, size - *bytes_read);
+        *bytes_read += size - *bytes_read;
       }
     }
   }
+  return 0;
+}
 
-  // Check if we have more than 30 inode block
-  int nextInodeBlock = ffb->inode_block[MaxInodeInFFB - 1], inodeIndex;
+/*  Read from external inode starting from nextInodeBlock
+ *
+ * *disk: disk to read data from
+ * *blockToRead: pointer to the number block to read
+ *  size: size of the data to read
+ * *data: pointer to write data in
+ *  nextInodeBlock: num of External InodeBlock to start read data
+ * *bytes_read: pointer to the bytes readed
+ *
+ * returns: 0 if successful, -1 on error
+ */
+int readFromExternalInode(DiskDriver *disk, int *blockToRead, int size,
+                          void *data, int nextInodeBlock, int *bytes_read) {
+
   InodeBlock inodeBlock;
 
-  // Loop to clear all blocks declared in inod blocks
-  while (nextInodeBlock != -1) {
-
+  while (nextInodeBlock != -1 && *blockToRead > 0) {
     DiskDriver_readBlock(disk, &inodeBlock, nextInodeBlock);
-    for (inodeIndex = 0; inodeIndex < MaxElemInBlock - 1 && block_to_read > 0;
-         inodeIndex++) {
-      inodeBlockNum = inodeBlock.inodeList[inodeIndex];
-      if (inodeBlockNum) {
-        // Read the directoryblock linked by the inode
-        DiskDriver_readBlock(disk, &fileBlock,
-                             inodeBlock.inodeList[inodeIndex]);
-        block_to_read--;
-        if (block_to_read > 0) {
-          memcpy(data + bytes_read, &fileBlock, MaxDataInBlock);
-          bytes_read += MaxDataInBlock;
-        } else {
-          memcpy(data + bytes_read, &fileBlock, size - bytes_read);
-          bytes_read += size - bytes_read;
-        }
-        // printf("Num_blocks :%d Written_bytes: %d inodeindex: %d
-        // InodeBlockNum: %d\n", block_to_read,bytes_read,inodeIndex,
-        // inodeBlockNum );
+    readDataFromExternalInode(disk, &inodeBlock, blockToRead, size, data, 0,
+                              bytes_read);
+    nextInodeBlock = inodeBlock.inodeList[MaxElemInBlock - 1];
+  }
+  return 0;
+}
+
+/*  Read from internal inode starting from startFrom
+ *
+ * *f: FileHandle of the file to read data
+ * *blockToRead: pointer to the number block to read
+ *  size: size of the data to read
+ * *data: pointer to write data in
+ *  startFrom: num of internal InodeBlock to start read data
+ * *bytes_read: pointer to the bytes readed
+ *
+ * returns: 0 if successful, -1 on error
+ */
+int readFromInternalInode(FileHandle *f, int *blockToRead, int size, void *data,
+                          int startFrom, int *bytes_read) {
+
+  int inodeBlockNum, i;
+  FileBlock fileBlock;
+
+  for (i = startFrom; i < MaxInodeInFFB - 1 && *blockToRead > 0; i++) {
+    inodeBlockNum = f->ffb->inode_block[i];
+    // Check if inode block exist
+    if (inodeBlockNum) {
+      // Read the directoryblock linked by the inode
+      DiskDriver_readBlock(f->sfs->disk, &fileBlock, inodeBlockNum);
+      *blockToRead -= 1;
+      if (*blockToRead > 0) {
+        memcpy(data + *bytes_read, &fileBlock, MaxDataInBlock);
+        *bytes_read += MaxDataInBlock;
+      } else {
+        memcpy(data + *bytes_read, &fileBlock, size - *bytes_read);
+        *bytes_read += size - *bytes_read;
       }
     }
+  }
+  return 0;
+}
+
+int SimpleFS_read(FileHandle *f, void *data, int size) {
+
+  DiskDriver *disk = f->sfs->disk;
+
+  int pos_start = f->pos_in_file;
+
+  int bytes_read = 0;
+  int i;
+  FirstFileBlock *ffb = f->ffb;
+
+  FileBlock fileBlock;
+  
+  if (f->pos_in_block_type == FFB) {
+    // CASO 1:
+    int block_to_read;
+    if (pos_start + size < MaxDataInFFB) {
+      memcpy(data, ffb->data + pos_start, size);
+      return size;
+    }
+
+    memcpy(data, ffb->data + pos_start, MaxDataInFFB - pos_start);
+    bytes_read += MaxDataInFFB - pos_start;
+
+    block_to_read = (size - bytes_read + MaxDataInBlock - 1) / MaxDataInBlock;
+
+    // Search in the first inode block in ffb
+    readFromInternalInode(f, &block_to_read, size, data, 0, &bytes_read);
+    int nextInodeBlock = ffb->inode_block[MaxInodeInFFB - 1];
+    // Read from the remaning external Inode if presents
+    readFromExternalInode(disk, &block_to_read, size, data, nextInodeBlock,
+                          &bytes_read);
+
+  } else if (f->pos_in_block_type == InodeBlockFFB) {
+    // CASO 2:
+
+    int block_to_skip = (pos_start - MaxDataInFFB) / MaxDataInBlock;
+
+    int offsetInBlock =
+        pos_start - MaxDataInFFB - (block_to_skip * MaxDataInBlock);
+
+    int bytes_to_read_in_block = offsetInBlock + size > MaxDataInBlock
+                                     ? MaxDataInBlock - offsetInBlock
+                                     : size;
+
+    int block_to_read =
+        (size - bytes_to_read_in_block + MaxDataInBlock - 1) / MaxDataInBlock;
+    // Read the data from blockToSkip with offset
+    DiskDriver_readBlock(disk, &fileBlock, ffb->inode_block[block_to_skip]);
+    memcpy(data, fileBlock.data + offsetInBlock, bytes_to_read_in_block);
+    bytes_read += bytes_to_read_in_block;
+
+    block_to_skip++;
+
+    // Read in the internal inode block
+    readFromInternalInode(f, &block_to_read, size, data, block_to_skip,
+                          &bytes_read);
+    int nextInodeBlock = ffb->inode_block[MaxInodeInFFB - 1];
+    // Read the remaining externel block if presents
+    readFromExternalInode(disk, &block_to_read, size, data, nextInodeBlock,
+                          &bytes_read);
+
+  } else if (f->pos_in_block_type == ExternalInodeBlock) {
+    // CASO 3:
+
+    int data_in_External_inode =
+        pos_start - MaxDataInFFB - ((MaxInodeInFFB - 1) * MaxDataInBlock);
+
+    int data_in_External_inode_blocks = data_in_External_inode / MaxDataInBlock;
+    int allocated_inode = data_in_External_inode_blocks / (MaxElemInBlock - 1);
+    // Absolute offset in external Inode
+    int absOffsetBlock =
+        pos_start - MaxDataInFFB - ((MaxInodeInFFB - 1) * MaxDataInBlock) -
+        (allocated_inode * MaxDataInBlock * (MaxElemInBlock - 1));
+
+    int offsetBlock = absOffsetBlock / MaxDataInBlock;
+    int offsetInBlock = absOffsetBlock % MaxDataInBlock;
+
+    int nextInodeBlock = ffb->inode_block[MaxInodeInFFB - 1];
+    InodeBlock inodeBlock = {0};
+
+    // Skip inode
+    for (i = 0; i < allocated_inode; i++) {
+      DiskDriver_readBlock(disk, &inodeBlock, nextInodeBlock);
+      nextInodeBlock = inodeBlock.inodeList[MaxElemInBlock - 1];
+    }
+
+    DiskDriver_readBlock(disk, &inodeBlock, nextInodeBlock);
+
+    int bytes_to_read_in_block = offsetInBlock + size > MaxDataInBlock
+                                     ? MaxDataInBlock - offsetInBlock
+                                     : size;
+
+    int block_to_read =
+        (size - bytes_to_read_in_block + MaxDataInBlock - 1) / MaxDataInBlock;
+    
+    // Read the data from blockToSkip with offset
+    DiskDriver_readBlock(disk, &fileBlock,
+                         inodeBlock.inodeList[offsetBlock]);
+    memcpy(data, fileBlock.data + offsetInBlock, bytes_to_read_in_block);
+
+    bytes_read += bytes_to_read_in_block;
+
+    offsetBlock++;
+
+    // Read remaning fileBlock in the current external Inode
+    readDataFromExternalInode(disk, &inodeBlock, &block_to_read, size, data,
+                              offsetBlock, &bytes_read);
     nextInodeBlock = inodeBlock.inodeList[MaxElemInBlock - 1];
-    // printf("last index : %d block_to_read: %d\n",nextInodeBlock,
-    // block_to_read);
+    // Read remaining External Inode if presents
+    readFromExternalInode(disk, &block_to_read, size, data, nextInodeBlock,
+                          &bytes_read);
   }
   return bytes_read;
 }
@@ -1394,8 +1534,6 @@ int SimpleFS_seek(FileHandle *f, int pos) {
     return -1;
   }
 
-  // printf("pos %d  ",pos);
-
   // Requested pos in the FFB
   if (pos < MaxDataInFFB) {
     f->pos_in_block = 1;
@@ -1403,10 +1541,7 @@ int SimpleFS_seek(FileHandle *f, int pos) {
     goto exit;
   }
 
-  // int reminingData = pos - MaxDataInFFB;
-
   int askedBlock = (pos - MaxDataInFFB) / MaxDataInBlock;
-  // printf("askedBlock %d\n", askedBlock);
 
   // Requested block is defined in the inodeblock in the FFB
   if (pos < MaxDataInFFB + ((MaxInodeInFFB - 1) * MaxDataInBlock)) {
