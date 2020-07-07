@@ -604,7 +604,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
   }
 
   DiskDriver_writeBlock(disk, ffb, ffb->fcb.block_in_disk);
-
+  SimpleFS_seek(f,pos_start + written_bytes);
   return written_bytes;
 }
 
@@ -1524,6 +1524,7 @@ int SimpleFS_read(FileHandle *f, void *data, int size) {
     readFromExternalInode(disk, &block_to_read, size, data, nextInodeBlock,
                           &bytes_read);
   }
+  SimpleFS_seek(f,pos_start + bytes_read);
   return bytes_read;
 }
 

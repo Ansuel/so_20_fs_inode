@@ -52,7 +52,6 @@ int main(int agc, char **argv) {
    * limite di tutto???? limite del disco
    */
 
-  // TODO: la write e la read muovono il cursor avanti nel file
   FileHandle *f = SimpleFS_createFile(root, "File");
 
   int len = 10000000;
@@ -61,7 +60,7 @@ int main(int agc, char **argv) {
 
   int seekOffset = 4328919;
 
-  int textLen = 4328919;
+  int textLen = 200;
 
   memset(text,'A',textLen);
   text[len-1] = '\0';
@@ -77,6 +76,8 @@ int main(int agc, char **argv) {
 
   ret = SimpleFS_write(f, text, strlen(text));
   printf("Scritti %d bytes len: %ld\n", ret, strlen(text));
+
+  SimpleFS_seek(f, seekOffset);
 
   ret = SimpleFS_read(f, buf, strlen(text));
   printf("Letti %d bytes\n", ret);
@@ -95,14 +96,14 @@ int main(int agc, char **argv) {
   SimpleFS_seek(f, seekOffset);
 
   memset(buf,0,textLen);
-  ret = SimpleFS_read(f, buf, strlen(text));
+  ret = SimpleFS_read(f, buf, 18);
   printf("Letti %d bytes\n", ret);
 
   printf("letto: %s\n", buf);
   printf("\n");
 
 
-  SimpleFS_seek(f, seekOffset+18);
+  // SimpleFS_seek(f, seekOffset+18);
 
   memset(buf,0,strlen(text));
 
@@ -112,7 +113,7 @@ int main(int agc, char **argv) {
   printf("letto: %s\n", buf);
   printf("\n");
 
-  SimpleFS_seek(f, seekOffset+textLen-strlen(tmp_text));
+  SimpleFS_seek(f, seekOffset+textLen);
    ret = SimpleFS_write(f, tmp_text, strlen(tmp_text));
 
    memset(buf,0,strlen(text));
