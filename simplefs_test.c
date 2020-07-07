@@ -19,11 +19,9 @@ int main(int agc, char **argv) {
   // printf("DirectoryBlock size %ld\n", sizeof(DirectoryBlock));
   // TEST DISK_DRIVER.C
 
-  printf("MaxFileInDir: %d\n", MaxFileInDir);
+  printf("MaxFileInDir: %ld\n", MaxFileInDir);
 
   int ret;
-  char *readed = calloc(BLOCK_SIZE, sizeof(char));
-  memset(readed, 0, BLOCK_SIZE);
 
   DiskDriver *disk = malloc(sizeof(DiskDriver));
 
@@ -32,6 +30,8 @@ int main(int agc, char **argv) {
   printf("Bitmap Blocks: %d\n", disk->header->bitmap_blocks);
   printf("Bitmap Entires: %d\n", disk->header->bitmap_entries);
   printf("Reserved blocks: %d\n", disk->reserved_blocks);
+
+  printf("\n\n");
 
   // TEST SIMPLEFS.C
 
@@ -42,121 +42,58 @@ int main(int agc, char **argv) {
 
   DirectoryHandle* root = SimpleFS_init(&fs, fs.disk);
 
-  // CREO 10 FILE NELLA ROOT
-  FileHandle *file1 = SimpleFS_createFile(root, "PrimoFile");
-  FileHandle *file2 = SimpleFS_createFile(root, "SecondoFile");
-  FileHandle *file3 = SimpleFS_createFile(root, "TerzoFile");
-  FileHandle *file4 = SimpleFS_createFile(root, "QuartoFile");
-  FileHandle *file5 = SimpleFS_createFile(root, "QuintoFile");
-  FileHandle *file6 = SimpleFS_createFile(root, "SestoFile");
-  FileHandle *file7 = SimpleFS_createFile(root, "SettimoFile");
-  FileHandle *file8 = SimpleFS_createFile(root, "OttavoFile");
-  FileHandle *file9 = SimpleFS_createFile(root, "NonoFile");
-  FileHandle *file10 = SimpleFS_createFile(root, "DecimoFile");
- int i;
+  /* Casi limite 
+   * 3817 3818 3819 3820 3821 3822  Caso occupa tutto il data FFB e alloca un blocco
+   * 130793 130794 130795 130796 130797 130798  Caso occupa tutti gli inode e alloca un externalInode
+   * 4321001 4321002 4321003 4321004 4321005 4321006 Caso occupa un intero external inode e ne alloca un altro
+   * 4328917 4328918 4328919 4328920 4328921 4328922 Caso a caso :D
+   * limite di tutto???? limite del disco
+   */
 
-  // LEGGO QUANTI FILE E I NOMI DEI FILE DELLA ROOT
-  char** names = calloc(root->fdb->num_entries,sizeof(char*));
-  SimpleFS_readDir(names, root);
+  // TODO: la write e la read muovono il cursor avanti nel file
+  FileHandle *f = SimpleFS_createFile(root, "File");
 
-  // for(i = 0; i < root->fdb->num_entries; i++){
-  //   if(names[i]) printf("file numero: %d\t nome: %s\n", i, names[i]);
-  // }
+  int len = 10000000;
+  // int i;
+  char * text = calloc(len, sizeof(char));
 
-  // CREO UNA NUOVA CARTELLA E CAMBIO IL DIRHANDLE
-  SimpleFS_mkDir(root,"NUOVA CARTELLA");
-  // printf("Elementi nella dir: %d\n", root->fdb->num_entries);
-  SimpleFS_changeDir(root, "NUOVA CARTELLA");
+  int seekOffset = 4328919;
 
-  // CREO 4000 FILE NELLA NUOVA CARTELLA
-  for(i = 0; i < 10; i++){
-    char str[128] = {0};
-    sprintf(str, "File%d",i);
-    ret = SimpleFS_createFile(root, str);
-    if (!ret) return 0;
-  }
+  int textLen = 4328919;
 
-  // printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+  memset(text,'A',textLen);
+  text[len-1] = '\0';
 
+  char * tmp_buf = calloc(len,sizeof(char));
+  SimpleFS_write(f, tmp_buf, len);
 
-  // LEGGO QUANTI FILE E I NOMI DEI FILE NELLA CARTELLA
-  char** namess = calloc(root->fdb->num_entries,sizeof(char*));
-  SimpleFS_readDir(namess, root);
-  // printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+  printf("\n");
 
-  // for(i = 0; i < root->fdb->num_entries; i++){
-  //   if(namess[i]) printf("file numero: %d\t nome: %s\n", i, namess[i]);
-  // }
+  SimpleFS_seek(f, seekOffset);
 
-  // // RITORNO NELLA ROOT E CREO 50 FILE
-  SimpleFS_changeDir(root, "..");
-  for(i = 0; i < 10; i++){
-    char str[128] = {0};
-    sprintf(str, "File%d",i);
-    ret = SimpleFS_createFile(root, str);
-    if (!ret) return 0;
-  }
-  // printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+  char * buf = calloc(strlen(text)+1, sizeof(char));
 
-  // LEGGO QUANTI E QULI FILE CI SONO NELLA ROOT
-  char** namesss = calloc(root->fdb->num_entries,sizeof(char*));
-  SimpleFS_readDir(namesss, root);
-  // printf("Elementi nella dir: %d\n", root->fdb->num_entries);
+  ret = SimpleFS_write(f, text, strlen(text));
+  printf("Scritti %d bytes len: %ld\n", ret, strlen(text));
 
-  // for(i = 0; i < root->fdb->num_entries; i++){
-  //   if(namesss[i]) printf("file numero: %d\t nome: %s\n", i, namesss[i]);
-  // }
+  printf("\n");
 
-  SimpleFS_remove(&fs, "PrimoFile");
-  char** namessss = calloc(root->fdb->num_entries,sizeof(char*));
-  SimpleFS_readDir(namessss, root);
-  // for(i = 0; i < root->fdb->num_entries; i++){
-  //   if(namessss[i]) printf("file numero: %d\t nome: %s\n", i, namessss[i]);
-  // }
+  SimpleFS_seek(f, seekOffset+18);
 
-  SimpleFS_remove(&fs, "NUOVA CARTELLA");
-  namessss = calloc(root->fdb->num_entries,sizeof(char*));
-  SimpleFS_readDir(namessss, root);
-  // for(i = 0; i < root->fdb->num_entries; i++){
-  //   if(namessss[i]) printf("file numero: %d\t nome: %s\n", i, namessss[i]);
-  // }
-  // ret = SimpleFS_changeDir(root, "NUOVA CARTELLA");
-  // printf("%d\n",ret);
+  char * tmp_text = "Cassa";
 
-  int stampa = 2000000;
-  
-  char* data = calloc(stampa,sizeof(char));
-  memset(data,'A',stampa);
-  data[stampa-1] = 'B';
-  ret = SimpleFS_write(file5,data,stampa);
-  printf("written: %d\n", ret);
-  char* buf = calloc(stampa,sizeof(char));
-  ret = SimpleFS_read(file5,buf,stampa);
-  printf("bytes_read = %d\n Ultima lettera: %c\n",ret,buf[stampa-1]);
+  ret = SimpleFS_write(f, tmp_text, strlen(tmp_text));
+  printf("Scritti %d bytes\n", ret);
 
-  SimpleFS_seek(file5, stampa-1);
+  printf("\n");
 
-  SimpleFS_write(file5, "T", sizeof(char));
-  ret = SimpleFS_read(file5,buf,stampa);
-  printf("bytes_read = %d\n Ultima lettera: %c\n",ret,buf[stampa-1]);
+  SimpleFS_seek(f, seekOffset+textLen-strlen(tmp_text));
+   ret = SimpleFS_write(f, tmp_text, strlen(tmp_text));
 
-  // char* buf = calloc(stampa,sizeof(char));
-  // ret = SimpleFS_remove(&fs, file5->ffb->fcb.name);
-  // printf("bytes_read = %d\n Ultima lettera: %c\n",ret,buf[stampa-1]);
+   memset(buf,0,strlen(text));
 
-  // namessss = calloc(root->fdb->num_entries,sizeof(char*));
-  // SimpleFS_readDir(namessss, root);
-  // for(i = 0; i < root->fdb->num_entries; i++){
-  //   if(namessss[i]) printf("file numero: %d\t nome: %s\n", i, namessss[i]);
-  // }
+  printf("\n");
 
-//  file1 = SimpleFS_createFile(root, "PrimoFile45");
-
-//  int fed = open("testfi.txt", O_RDWR);
-
-//  lseek(fed,0,SEEK_END);
-
-//  write(fed, "caiogdouewgdoe", sizeof("caiogdouewgdoe"));
 
 
 }
