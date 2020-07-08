@@ -4,7 +4,7 @@ CC=gcc
 AR=ar
 
 
-BINS= simplefs_test
+BINS= simplefs_test simplefs_shell test
 
 #add here your object files
 OBJS = disk_driver.o\
@@ -30,6 +30,9 @@ so_game: simplefs_test.c $(OBJS)
 test:	simplefs_test.c $(OBJS) 
 	$(CC) $(CCOPTS)  -o $@ $^ $(LIBS) -lm
 	rm test.fs
+
+shell:	simplefs_shell.c  $(OBJS) 
+	$(CC) $(CCOPTS)  -o $@ $^ $(LIBS) -lm
 
 clean:
 	rm -rf *.o *~  $(BINS)
