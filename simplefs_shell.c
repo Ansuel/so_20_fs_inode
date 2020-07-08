@@ -3,6 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "simplefs.h"
 
@@ -28,7 +31,7 @@ SimpleFS fs;
 
 char *built_in_str[] = {
     "mkDisk", "loadDisk", "formatDisk", "mountDisk",
-    "help", "exit"};
+    "help", "exit", "mkDir", "cd", "ls", "touch", "cp", "extractFile"};
 
 int num_built_in = sizeof(built_in_str) / sizeof(char *);
 
@@ -117,6 +120,93 @@ int mountDisk() {
     return 0;
 }
 
+int mkDir(char **args) {
+    if(!args[1]){ printf("Inserisci il nome della nuova cartella\n");}
+    SimpleFS_mkDir(currDir, args[1]);
+
+    printf("Cartella creata con nome %s \n", args[1]);
+
+    return 0;
+}
+
+int cd(char **args) {
+    if(!args[1]){ printf("Inserisci il nome della cartella\n");}
+    SimpleFS_changeDir(currDir, args[1]);
+    return 0;
+}
+
+int ls() {
+    int i;
+    int numElem = currDir->fdb->num_entries;
+    char** names = calloc(numElem,sizeof(char*));
+    SimpleFS_readDir(names,currDir);
+    for(i = 0; i < numElem; i++){
+      printf("%s\t", names[i]);
+    }
+    printf("\n");
+    return 0;
+}
+
+int touch(char** args) {
+    FileHandle* ret;
+    if(!args[1]) {printf("Inserisci il nome del file da creare\n");}
+    ret = SimpleFS_createFile(currDir,args[1]);
+    printf("Creato file con nome: %s \n", args[1]);
+    free(ret);
+    return 0;
+}
+
+int cp(char** args) {
+    if(!args[1] || !args[2]){
+      printf("Inserie il nome del file o il nuovo nome del file\n");
+    }
+
+    FileHandle* dst = SimpleFS_openFile(currDir,args[2]);
+    if(!dst){ dst = SimpleFS_createFile(currDir,args[2]); }
+    int src = open(args[1], O_RDONLY);
+    char buf[1024];
+    int bytes_read = 1;
+    while(bytes_read != 0){
+      bytes_read = read(src,buf,1024);
+      if(bytes_read == -1){printf("Errore nella read"); return 0;}
+      SimpleFS_write(dst,buf,bytes_read);
+    }
+    close(src);
+    SimpleFS_close(dst);
+    return 0;
+
+}
+
+int extractFile(char** args) {
+    if(!args[1] || !args[2]){
+      printf("Inserie il nome del file o il nuovo nome del file\n");
+    }
+
+    FileHandle* src = SimpleFS_openFile(currDir,args[1]);
+    if(!src){ printf("File non esistente\n"); return 0; }
+    int dst = open(args[2], O_CREAT | O_TRUNC | O_WRONLY, 0644);
+    char buf[1024];
+    int written_bytes = 0;
+    int readed_bytes = 0;
+    int fileLen = src->ffb->fcb.size_in_bytes;
+    printf("filelen: %d\n", fileLen);
+    while(written_bytes < fileLen){
+      printf("Ci entro \n");
+      int to_read = 1024;
+      if(fileLen-written_bytes < to_read){ 
+        to_read = fileLen-written_bytes;
+        }
+        printf("prima della read to_read: %d\n",to_read);
+      readed_bytes = SimpleFS_read(src, buf, to_read);
+      printf("dopo la read\n");
+      written_bytes += write(dst, buf, readed_bytes);
+    }
+    close(dst);
+    SimpleFS_close(src);
+    return 0;
+
+}
+
 int execute_built_in_command(char **args) {
   int flag;
 
@@ -142,6 +232,30 @@ int execute_built_in_command(char **args) {
 
    if (strcmp(args[0], built_in_str[5]) == 0) {
     flag = shellExit();
+  }
+
+   if (strcmp(args[0], built_in_str[6]) == 0) {
+    flag = mkDir(args);
+  }
+
+   if (strcmp(args[0], built_in_str[7]) == 0) {
+    flag = cd(args);
+  }
+
+   if (strcmp(args[0], built_in_str[8]) == 0) {
+    flag = ls();
+  }
+
+   if (strcmp(args[0], built_in_str[9]) == 0) {
+    flag = touch(args);
+  }
+
+   if (strcmp(args[0], built_in_str[10]) == 0) {
+    flag = cp(args);
+  }
+
+  if (strcmp(args[0], built_in_str[11]) == 0) {
+    flag = extractFile(args);
   }
 
   return flag;

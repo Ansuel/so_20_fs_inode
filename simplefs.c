@@ -464,7 +464,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
         }
       }
       DiskDriver_writeBlock(disk, ffb, ffb->fcb.block_in_disk);
-
+      SimpleFS_seek(f,pos_start + size);
       return size;
     }
 
@@ -1445,6 +1445,7 @@ int SimpleFS_read(FileHandle *f, void *data, int size) {
     int block_to_read;
     if (pos_start + size < MaxDataInFFB) {
       memcpy(data, ffb->data + pos_start, size);
+      SimpleFS_seek(f,pos_start + size);
       return size;
     }
 
