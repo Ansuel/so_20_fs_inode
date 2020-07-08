@@ -57,9 +57,17 @@ char* build_in_str_descr[] = {
 int num_built_in = sizeof(built_in_str) / sizeof(char *);
 
 // TODO unload disk and the simpleFS
-int shellExit() { return 1; }
+int shellExit(void) {
 
-int help() {
+    if (mounted) {
+        DiskDriver_flush(&disk);
+        SimpleFS_unload(&fs, currDir);
+    }
+
+    return 1;
+}
+
+int help(void) {
   int i = 0;
 
   printf("\n");
@@ -68,7 +76,7 @@ int help() {
   printf("\n");
 
   for (i = 0; i < num_built_in; i++) {
-    if( i == 1 || i == 2 || i == 3 | i == 11 || i == 13 || i == 14) {
+    if( i == 1 || i == 2 || i == 3 || i == 11 || i == 13 || i == 14) {
       printf("\033[0;32m%s \033[0m\t ", built_in_str[i]);
       printf("%s\n", build_in_str_descr[i]);
     } else {
@@ -129,7 +137,7 @@ int loadDisk(char **args) {
     return 0;
 }
 
-int formatDisk() {
+int formatDisk(void) {
     SimpleFS_format(&fs);
 
     printf("Disco formattato, root creata\n");
@@ -137,9 +145,13 @@ int formatDisk() {
     return 0;
 }
 
-int mountDisk() {
+int mountDisk(void) {
     currDir = SimpleFS_init(&fs, fs.disk);
     mounted = 1;
+
+    if(!currDir) {
+        printf("Disco non montato correttamente. E' stato formattato?\n");
+    }
 
     printf("Disco montato\n");
 
@@ -161,7 +173,7 @@ int cd(char **args) {
     return 0;
 }
 
-int ls() {
+int ls(void) {
     int i;
     int numElem = currDir->fdb->num_entries;
     char** names = calloc(numElem,sizeof(char*));
@@ -175,8 +187,10 @@ int ls() {
 
 int touch(char** args) {
     FileHandle* ret;
+
     if(!args[1]) {printf("Inserisci il nome del file da creare\n"); return 0;}
     ret = SimpleFS_createFile(currDir,args[1]);
+    if (!ret) { printf("Errore nella crezione del file. Il file già esiste?\n"); return 0;}
     printf("Creato file con nome: %s \n", args[1]);
     free(ret);
     return 0;
@@ -296,73 +310,76 @@ int rm(char** args){
 }
 
 int execute_built_in_command(char **args, char* line) {
-  int flag;
-
   if (strcmp(args[0], built_in_str[0]) == 0) {
-    flag = mkDisk(args);
+    return mkDisk(args);
   }
 
     if (strcmp(args[0], built_in_str[1]) == 0) {
-    flag = loadDisk(args);
+    return loadDisk(args);
   }
 
   if (strcmp(args[0], built_in_str[2]) == 0) {
-    flag = formatDisk();
+    return formatDisk();
   }
 
   if (strcmp(args[0], built_in_str[3]) == 0) {
-    flag = mountDisk();
+    return mountDisk();
   }
 
    if (strcmp(args[0], built_in_str[4]) == 0) {
-    flag = help();
+    return help();
   }
 
    if (strcmp(args[0], built_in_str[5]) == 0) {
-    flag = shellExit();
+    return shellExit();
+  }
+
+  if (!mounted) {
+    printf("Disco non montato. Crealo/Caricalo e Montalo per usare questo comando!\n");
+    return 0;
   }
 
    if (strcmp(args[0], built_in_str[6]) == 0) {
-    flag = mkDir(args);
+    return mkDir(args);
   }
 
    if (strcmp(args[0], built_in_str[7]) == 0) {
-    flag = cd(args);
+    return cd(args);
   }
 
    if (strcmp(args[0], built_in_str[8]) == 0) {
-    flag = ls();
+    return ls();
   }
 
    if (strcmp(args[0], built_in_str[9]) == 0) {
-    flag = touch(args);
+    return touch(args);
   }
 
    if (strcmp(args[0], built_in_str[10]) == 0) {
-    flag = cp(args);
+    return cp(args);
   }
 
   if (strcmp(args[0], built_in_str[11]) == 0) {
-    flag = extractFile(args);
+    return extractFile(args);
   }
 
   if (strcmp(args[0], built_in_str[12]) == 0) {
-    flag = cat(args);
+    return cat(args);
   }
   
   if (strcmp(args[0], built_in_str[13]) == 0) {
-    flag = writeFile(args,line);
+    return writeFile(args,line);
   }
 
   if (strcmp(args[0], built_in_str[14]) == 0) {
-    flag = appendFile(args,line);
+    return appendFile(args,line);
   }
 
   if (strcmp(args[0], built_in_str[15]) == 0) {
-    flag = rm(args);
+    return rm(args);
   }
 
-  return flag;
+  return 0;
 }
 
 char **parse_command(char *my_line) {
@@ -398,7 +415,7 @@ char *read_command_line(void) {
   return buffer;
 }
 
-void print_prompt() { 
+void print_prompt(void) {
 
     if (mounted) {
         printf("\033[1;36m%s \033[0m",currDir->fdb->fcb.name);

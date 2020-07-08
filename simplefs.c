@@ -28,6 +28,10 @@ DirectoryHandle *SimpleFS_init(SimpleFS *fs, DiskDriver *disk) {
 
   FirstDirectoryBlock *firstDir = calloc(1, sizeof(FirstDirectoryBlock));
   DiskDriver_readBlock(fs->disk, firstDir, 0);
+  char * root_name = "/";
+
+  if (memcmp(firstDir->fcb.name,root_name,strlen(root_name)))
+    return NULL;
 
   // Cache top level dir in fs
   fs->fdb_current_dir = firstDir;
@@ -48,9 +52,9 @@ DirectoryHandle *SimpleFS_init(SimpleFS *fs, DiskDriver *disk) {
   return dir;
 }
 
-int SimpleFS_unload(SimpleFS * fs, DirectoryHandle * root) {
+int SimpleFS_unload(SimpleFS *fs, DirectoryHandle *root) {
 
-  FdbChain *chain = fs->fdb_chain,* prevChain;
+  FdbChain *chain = fs->fdb_chain, *prevChain;
 
   while (chain) {
     free(chain->current);
@@ -70,7 +74,11 @@ int SimpleFS_unload(SimpleFS * fs, DirectoryHandle * root) {
 FileHandle *SimpleFS_createFileDir(DirectoryHandle *d, const char *filename,
                                    int is_dir) {
 
-  // TODO: CONTROLLARE SE IL FILE GIA ESISTE NELLA CARTELLA
+  FileHandle *checkExistingFile = SimpleFS_openFile(d, filename);
+  if (checkExistingFile) {
+    free(checkExistingFile);
+    return NULL;
+  }
 
   FileHandle *file = calloc(1, sizeof(FileHandle));
 
@@ -464,7 +472,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
         }
       }
       DiskDriver_writeBlock(disk, ffb, ffb->fcb.block_in_disk);
-      SimpleFS_seek(f,pos_start + size);
+      SimpleFS_seek(f, pos_start + size);
       return size;
     }
 
@@ -620,7 +628,7 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
   }
 
   DiskDriver_writeBlock(disk, ffb, ffb->fcb.block_in_disk);
-  SimpleFS_seek(f,pos_start + written_bytes);
+  SimpleFS_seek(f, pos_start + written_bytes);
   return written_bytes;
 }
 
@@ -804,7 +812,7 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
 
   int entries = dir->num_entries;
 
-  int i, block, inodeBlockNum, dirBlockNum,ret;
+  int i, block, inodeBlockNum, dirBlockNum, ret;
 
   FirstFileBlock *file = calloc(1, sizeof(FirstFileBlock));
 
@@ -956,8 +964,8 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
 
 exit:
 
-if(!found)
-  dir->num_entries--;
+  if (!found)
+    dir->num_entries--;
   DiskDriver_writeBlock(disk, dir, dir->fcb.block_in_disk);
 
   free(file);
@@ -1441,13 +1449,13 @@ int SimpleFS_read(FileHandle *f, void *data, int size) {
   FirstFileBlock *ffb = f->ffb;
 
   FileBlock fileBlock;
-  
+
   if (f->pos_in_block_type == FFB) {
     // CASO 1:
     int block_to_read;
     if (pos_start + size < MaxDataInFFB) {
       memcpy(data, ffb->data + pos_start, size);
-      SimpleFS_seek(f,pos_start + size);
+      SimpleFS_seek(f, pos_start + size);
       return size;
     }
 
@@ -1525,10 +1533,9 @@ int SimpleFS_read(FileHandle *f, void *data, int size) {
 
     int block_to_read =
         (size - bytes_to_read_in_block + MaxDataInBlock - 1) / MaxDataInBlock;
-    
+
     // Read the data from blockToSkip with offset
-    DiskDriver_readBlock(disk, &fileBlock,
-                         inodeBlock.inodeList[offsetBlock]);
+    DiskDriver_readBlock(disk, &fileBlock, inodeBlock.inodeList[offsetBlock]);
     memcpy(data, fileBlock.data + offsetInBlock, bytes_to_read_in_block);
 
     bytes_read += bytes_to_read_in_block;
@@ -1543,7 +1550,7 @@ int SimpleFS_read(FileHandle *f, void *data, int size) {
     readFromExternalInode(disk, &block_to_read, size, data, nextInodeBlock,
                           &bytes_read);
   }
-  SimpleFS_seek(f,pos_start + bytes_read);
+  SimpleFS_seek(f, pos_start + bytes_read);
   return bytes_read;
 }
 
@@ -1581,10 +1588,9 @@ exit:
 }
 
 // closes a file handle (destroyes it)
-int SimpleFS_close(FileHandle* f){
+int SimpleFS_close(FileHandle *f) {
 
   free(f->ffb);
   free(f);
   return 0;
-
 }
