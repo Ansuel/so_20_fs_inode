@@ -788,7 +788,7 @@ int CheckEmptyDirBlock(DirectoryBlock dir) {
 int SimpleFS_remove(SimpleFS *fs, char *filename) {
 
   // By default set the file as not found
-  int ret = -1;
+  int found = -1;
 
   if (!fs->fdb_current_dir)
     return -1;
@@ -804,7 +804,7 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
 
   int entries = dir->num_entries;
 
-  int i, block, inodeBlockNum, dirBlockNum;
+  int i, block, inodeBlockNum, dirBlockNum,ret;
 
   FirstFileBlock *file = calloc(1, sizeof(FirstFileBlock));
 
@@ -828,13 +828,13 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
       // Actually search the file
       if (!memcmp(name, fcb.name, sizeof(char) * MaxFilenameLen)) {
         if (fcb.is_dir) {
-          ret = DeleteStoredDir(disk, (FirstDirectoryBlock *)file);
+          found = DeleteStoredDir(disk, (FirstDirectoryBlock *)file);
         } else {
-          ret = DeleteStoredFile(disk, file);
+          found = DeleteStoredFile(disk, file);
         }
 
         // Setto l'indice vuoto nel file_blocks del fdb
-        if (!ret) {
+        if (!found) {
           dir->file_blocks[i] = 0;
         }
 
@@ -870,13 +870,13 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
           // Actually search the file
           if (!memcmp(name, fcb.name, sizeof(char) * MaxFilenameLen)) {
             if (fcb.is_dir) {
-              ret = DeleteStoredDir(disk, (FirstDirectoryBlock *)file);
+              found = DeleteStoredDir(disk, (FirstDirectoryBlock *)file);
             } else {
-              ret = DeleteStoredFile(disk, file);
+              found = DeleteStoredFile(disk, file);
             }
 
             // Update the dirblock linked from the inodeBlockNum
-            if (!ret) {
+            if (!found) {
               dirBlock.file_blocks[dirBlockNum] = 0;
               // Check if the block is empty and dealloc if needed
               if (CheckEmptyDirBlock(dirBlock)) {
@@ -925,12 +925,12 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
             // Actually search the file
             if (!memcmp(name, fcb.name, sizeof(char) * MaxFilenameLen)) {
               if (fcb.is_dir) {
-                ret = DeleteStoredDir(disk, (FirstDirectoryBlock *)file);
+                found = DeleteStoredDir(disk, (FirstDirectoryBlock *)file);
               } else {
-                ret = DeleteStoredFile(disk, file);
+                found = DeleteStoredFile(disk, file);
               }
 
-              if (!ret) {
+              if (!found) {
                 dirBlock.file_blocks[dirBlockNum] = 0;
                 DiskDriver_writeBlock(disk, &dirBlock, inodeBlockNum);
 
@@ -955,13 +955,15 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
   }
 
 exit:
+
+if(!found)
   dir->num_entries--;
   DiskDriver_writeBlock(disk, dir, dir->fcb.block_in_disk);
 
   free(file);
   free(name);
 
-  return ret;
+  return found;
 }
 
 // creates a new directory in the current one (stored in
