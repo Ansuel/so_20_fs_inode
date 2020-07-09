@@ -11,12 +11,7 @@
 #define DISK_NAME "test.fs"
 
 int main(int agc, char **argv) {
-  // printf("FileControlBlock size %ld\n", sizeof(FileControlBlock));
-  // printf("FirstFileBlock size %ld\n", sizeof(FirstFileBlock));
-  // printf("InodeBlock size %ld\n", sizeof(InodeBlock));
-  // printf("FileBlock size %ld\n", sizeof(FileBlock));
-  // printf("FirstDirectoryBlock size %ld\n", sizeof(FirstDirectoryBlock));
-  // printf("DirectoryBlock size %ld\n", sizeof(DirectoryBlock));
+  
   // TEST DISK_DRIVER.C
 
   printf("MaxFileInDir: %ld\n", MaxFileInDir);
@@ -27,9 +22,7 @@ int main(int agc, char **argv) {
 
   DiskDriver_init(disk, DISK_NAME, 100000);
 
-  printf("Bitmap Blocks: %d\n", disk->header->bitmap_blocks);
-  printf("Bitmap Entires: %d\n", disk->header->bitmap_entries);
-  printf("Reserved blocks: %d\n", disk->reserved_blocks);
+  
 
   printf("\n\n");
 

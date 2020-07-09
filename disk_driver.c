@@ -21,13 +21,13 @@ int DiskDriver_init(DiskDriver *disk, const char *filename, int num_blocks) {
   int fd = open(filename, O_CREAT | O_RDWR, 0777);
 
   ret = fstat(fd, &statbuf);
-  if (ret)
+  if (ret < 0)
     return handle_error("Error fstate: ", ret);
 
   // Fs is not initialized
   if (!statbuf.st_size) {
     ret = ftruncate(fd, num_blocks * BLOCK_SIZE);
-    if (ret)
+    if (ret < 0)
       return handle_error("Error ftruncate: ", ret);
 
     // Compile header in the fd
@@ -44,7 +44,7 @@ int DiskDriver_init(DiskDriver *disk, const char *filename, int num_blocks) {
     header.first_free_block = 1 + header.bitmap_blocks;
 
     ret = write(fd, &header, sizeof(DiskHeader));
-    if (ret)
+    if (ret < 0)
        return handle_error("Error write: ", ret);
   }
 
@@ -123,10 +123,6 @@ int DiskDriver_freeBlock(DiskDriver *disk, int block_num) {
   // Block already empty
   if (!disk->bitmap_data[block_num].used)
     return -1;
-
-  // ret = lseek(disk->fd, indexToOffset(disk, block_num), SEEK_SET);
-  // if (ret < 0)
-  //   return handle_error("Error lseek: ", ret);
 
   // Just set the block to be overwritable
   // The write will take care of empty the block if the data to be
