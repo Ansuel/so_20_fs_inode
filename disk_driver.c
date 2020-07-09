@@ -43,7 +43,9 @@ int DiskDriver_init(DiskDriver *disk, const char *filename, int num_blocks) {
     header.free_blocks = num_blocks - 1 - header.bitmap_blocks;
     header.first_free_block = 1 + header.bitmap_blocks;
 
-    write(fd, &header, sizeof(DiskHeader));
+    ret = write(fd, &header, sizeof(DiskHeader));
+    if (ret)
+       return handle_error("Error write: ", ret);
   }
 
   disk->header =
@@ -72,19 +74,11 @@ int DiskDriver_writeBlock(DiskDriver *disk, void *src, int block_num) {
   if (block_num > disk->header->num_blocks)
     return -1;
 
-  // printf("Offset Calc %d\n",indexToOffset(disk, block_num));
-
   ret = lseek(disk->fd, indexToOffset(disk, block_num), SEEK_SET);
   if (ret < 0)
     return handle_error("Error lseek: ", ret);
 
-  // Allocate empty buf to fill a block size
-  // tmp = calloc(BLOCK_SIZE, sizeof(char));
-  // memcpy(tmp, src, strlen(src));
-
   ret = write(disk->fd, src, BLOCK_SIZE);
-  // free(tmp);
-
   if (ret < 0)
     return handle_error("Error write: ", ret);
 
