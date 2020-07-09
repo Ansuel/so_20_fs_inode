@@ -72,14 +72,117 @@ int SimpleFS_unload(SimpleFS *fs, DirectoryHandle *root) {
   return 0;
 }
 
+int checkExistingFileDir(DirectoryHandle *d, const char * filename) {
+
+  FirstFileBlock file;
+
+  char *name = calloc(MaxFilenameLen, sizeof(char));
+  memcpy(name, filename, strlen(filename));
+
+  FirstDirectoryBlock *dir = d->fdb;
+  DiskDriver *disk = d->sfs->disk;
+  int entries = dir->num_entries;
+  int searched = 0;
+  int i, block, ret;
+
+  int found = 0;
+
+  // Search in the first file_blocks
+  for (i = 0; i < MaxFileInDir && searched < entries; i++, searched++) {
+    block = dir->file_blocks[i];
+
+    // We load the block alyeas as a file
+    // The fdb has the fcb as first struct elemen so this is not a problem
+    // This is casted to a fdb if is_dir is true in fcb
+    ret = DiskDriver_readBlock(disk, &file, block);
+    if (ret < 0)
+      goto exit;
+    // Actually search the file
+    if (!memcmp(name, file.fcb.name, sizeof(char) * MaxFilenameLen)) {
+        found = 1;
+        goto exit;
+    }
+  }
+
+  // Cerco il file nei directory block negli inode definiti nel fdb
+  int inodeIndex;
+  for (inodeIndex = 0; inodeIndex < MaxInodeInFFB - 1; inodeIndex++) {
+
+    int dir_block = dir->inode_block[inodeIndex];
+    if (dir_block) {
+      DirectoryBlock tmp_block;
+      ret =
+          DiskDriver_readBlock(disk, &tmp_block, dir->inode_block[inodeIndex]);
+      if (ret < 0)
+        goto exit;
+
+      for (i = 0; i < MaxElemInBlock && searched < entries; i++, searched++) {
+        block = tmp_block.file_blocks[i];
+
+        // We load the block alyeas as a file
+        // The fdb has the fcb as first struct elemen so this is not a problem
+        // This is casted to a fdb if is_dir is true in fcb
+        ret = DiskDriver_readBlock(disk, &file, block);
+        if (ret < 0)
+          goto exit;
+
+        // Actually search the file
+        if (!memcmp(name, file.fcb.name, sizeof(char) * MaxFilenameLen)) {
+            found = 1;
+            goto exit;
+        }
+      }
+    }
+  }
+
+  // Check if we have more than 30 inode block
+  int nextInodeBlock = dir->inode_block[MaxInodeInFFB - 1];
+  // Loop to clear all blocks declared in inod blocks
+  while (nextInodeBlock != -1) {
+    InodeBlock indexBlock;
+    ret = DiskDriver_readBlock(disk, &indexBlock, nextInodeBlock);
+    if (ret < 0)
+      goto exit;
+    for (inodeIndex = 0; inodeIndex < MaxElemInBlock - 1; inodeIndex++) {
+      if (indexBlock.inodeList[inodeIndex] == 0) {
+        goto exit;
+      }
+      DirectoryBlock tmp_dir;
+      ret = DiskDriver_readBlock(disk, &tmp_dir,
+                                 indexBlock.inodeList[inodeIndex]);
+      if (ret < 0)
+        goto exit;
+
+      for (i = 0; i < MaxElemInBlock && searched < entries; i++, searched++) {
+        block = tmp_dir.file_blocks[i];
+
+        ret = DiskDriver_readBlock(disk, &file, block);
+        if (ret < 0)
+          goto exit;
+
+        // Actually search the file
+        if (!memcmp(name, file.fcb.name, sizeof(char) * MaxFilenameLen)) {
+            found = 1;
+            goto exit;
+        }
+      }
+    }
+
+    nextInodeBlock = indexBlock.inodeList[MaxElemInBlock - 1];
+  }
+
+exit:
+
+  free(name);
+  return found;
+}
+
 // creates an empty file in the directory d
 // returns null on error (file existing, no free blocks)
 // an empty file consists only of a block of type FirstBlock
 FileHandle *SimpleFS_createFileDir(DirectoryHandle *d, const char *filename,
                                    int is_dir) {
-  FileHandle *checkExistingFile = SimpleFS_openFile(d, filename);
-  if (checkExistingFile) {
-    free(checkExistingFile);
+  if (checkExistingFileDir(d, filename)) {
     return NULL;
   }
 

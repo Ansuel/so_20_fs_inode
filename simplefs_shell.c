@@ -176,7 +176,7 @@ int mkDir(char **args) {
   }
   ret = SimpleFS_mkDir(currDir, args[1]);
   if (ret < 0) {
-    printf("Errore nella mkDir\n");
+    printf("Errore nella mkDir. La direcorty già esiste?\n");
     return 0;
   }
   printf("Cartella creata con nome %s nella cartella %s\n", args[1],
