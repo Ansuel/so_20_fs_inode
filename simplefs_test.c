@@ -39,15 +39,13 @@ int main(int agc, char **argv) {
    * 3817 3818 3819 3820 3821 3822  Caso occupa tutto il data FFB e alloca un blocco
    * 130793 130794 130795 130796 130797 130798  Caso occupa tutti gli inode e alloca un externalInode
    * 4321001 4321002 4321003 4321004 4321005 4321006 Caso occupa un intero external inode e ne alloca un altro
-   * 4328917 4328918 4328919 4328920 4328921 4328922 Caso a caso :D
-   * limite di tutto???? limite del disco
+   * 4328917 4328918 4328919 4328920 4328921 4328922 
    */
 
   FileHandle *f = SimpleFS_createFile(root, "File");
   FileHandle *f1 = SimpleFS_createFile(root, "File1");
 
   int len = 10000000;
-  // int i;
   char * text = calloc(len, sizeof(char));
 
   int seekOffset = 4328919;

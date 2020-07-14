@@ -11,8 +11,7 @@ OBJS = disk_driver.o\
 	utils.o\
 	simplefs.o
 
-HEADERS=bitmap.h\
-	disk_driver.h\
+HEADERS = disk_driver.h\
 	simplefs.h\
 	utils.h
 

@@ -342,7 +342,6 @@ FileHandle *SimpleFS_createFileDir(DirectoryHandle *d, const char *filename,
   ret = DiskDriver_writeBlock(disk, &new_inode_block, num_block);
   if (ret < 0)
     goto errFFB;
-  // printf("ESCO DAL CASO 3.2\n");
   // COLLEGO UN INODEBLOCK CON UN ALTRO INODEBLOCK
   if (current_inode_block != -1) {
     tmp_inode_block.inodeList[MaxElemInBlock - 1] = num_block;
@@ -351,7 +350,6 @@ FileHandle *SimpleFS_createFileDir(DirectoryHandle *d, const char *filename,
       goto errFFB;
   } else {
     // ALLOCO IL PRIMO INODEBLOCK COLLEGATO AL FIRST DIRECTORY BLOCK
-    // printf("sto allocando un inodeblock: %d\n", num_block);
     destDir->inode_block[MaxInodeInFFB - 1] = num_block;
   }
 
@@ -565,8 +563,6 @@ int writeToExternalINode(FileHandle *f, void *data, int size,
   while (*num_blocks > 0) {
     writePrevInode = 0;
     writeCurrInode = 0;
-
-    // printf("Inode block to load %d\n", succInodeBlock);
 
     if (succInodeBlock == -1) {
       memset(&currInode, 0, sizeof(InodeBlock));
@@ -1098,12 +1094,6 @@ int SimpleFS_remove(SimpleFS *fs, char *filename) {
   if (!fs->fdb_current_dir)
     return -1;
 
-  // int len = strlen(fs->fdb_current_dir.name);
-
-  // // Can't remove root directly? Can this happen?
-  // if (fs->fdb_current_dir == fs->fdb_top_level_dir)
-  //   return -1;
-
   DiskDriver *disk = fs->disk;
   FirstDirectoryBlock *dir = fs->fdb_current_dir;
 
@@ -1353,8 +1343,6 @@ int SimpleFS_changeDir(DirectoryHandle *d, char *dirname) {
     }
     return -1;
   }
-
-  // FirstDirectoryBlock *parent = d->directory;
 
   DiskDriver *disk = d->sfs->disk;
   FirstDirectoryBlock *dir = d->fdb;

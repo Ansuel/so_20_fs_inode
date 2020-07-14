@@ -1,7 +1,7 @@
 #pragma once
-#include "bitmap.h"
 
-#define BLOCK_SIZE 4096
+// La BLOCK_SIZE è 4096 per facilitare l'mmap siccome nei kernel linux la pagina è sempre di 4kb
+#define BLOCK_SIZE 4096 
 
 // #pragma pack(1)
 typedef struct bitmapEntry
@@ -10,7 +10,7 @@ typedef struct bitmapEntry
 } bitmapEntry;
 // #pragma pack(0)
 
-// Every BitMapEntry is 2 bit, we can rapresent 4x block size in one block_size
+// Every BitMapEntry is 2 bit
 #define MaxBitMapEntryInBlock (BLOCK_SIZE / sizeof(char))
 
 // this is stored in the 1st block of the disk
@@ -18,7 +18,6 @@ typedef struct {
   int num_blocks;
   int bitmap_blocks;   // how many blocks in the bitmap
   int bitmap_entries;  // how many bytes are needed to store the bitmap
-  
   int free_blocks;     // free blocks
   int first_free_block;// first block index
 } DiskHeader; 

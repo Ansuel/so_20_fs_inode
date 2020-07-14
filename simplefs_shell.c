@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 #include "simplefs.h"
-#define TRANSFER_SIZE 8192
+#define TRANSFER_SIZE 1024
 // Global variable to store the disk
 DirectoryHandle *currDir;
 int mounted = 0;
@@ -235,7 +235,7 @@ int cp(char **args) {
   int readed_bytes = 0;
   int written_bytes = 0;
   if (!args[1] || !args[2]) {
-    printf("Inserie il nome del file o il nuovo nome del file\n");
+    printf("Inserire il nome del file o il nuovo nome del file\n");
     return 0;
   }
 
@@ -281,7 +281,7 @@ exit:
 
 int extractFile(char **args) {
   if (!args[1] || !args[2]) {
-    printf("Inserie il nome del file o il nuovo nome del file\n");
+    printf("Inserire il nome del file o il nuovo nome del file\n");
     return 0;
   }
 

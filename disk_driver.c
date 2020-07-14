@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+// Converts index to the real offset
 static int indexToOffset(DiskDriver *disk, int index) {
   return (index + disk->reserved_blocks) * BLOCK_SIZE;
 }
@@ -66,7 +67,7 @@ int DiskDriver_init(DiskDriver *disk, const char *filename, int num_blocks) {
 };
 
 int DiskDriver_writeBlock(DiskDriver *disk, void *src, int block_num) {
-  // char *tmp;
+
   int ret;
   assert(disk);
 

@@ -1,17 +1,15 @@
 #pragma once
-#include "bitmap.h"
 #include "disk_driver.h"
 
-/*these are structures stored on disk*/
-#define MaxElemInBlock (BLOCK_SIZE/sizeof(int))
+#define MaxElemInBlock (BLOCK_SIZE/sizeof(int)) //Max integers in one block
 
-#define MaxFilenameLen 128
-#define MaxFileInDir (BLOCK_SIZE - sizeof(FileControlBlock) - (MaxInodeInFFB*sizeof(int)) -(sizeof(int))) / (sizeof(int))
-#define MaxDataInFFB (BLOCK_SIZE-sizeof(FileControlBlock)-(MaxInodeInFFB*sizeof(int)))
-#define MaxDataInBlock (BLOCK_SIZE/sizeof(char))
-#define MaxInodeInFFB 32
+#define MaxFilenameLen 128 //Max len for the name of files
+#define MaxFileInDir (BLOCK_SIZE - sizeof(FileControlBlock) - (MaxInodeInFFB*sizeof(int)) -(sizeof(int))) / (sizeof(int)) //Max file in one First Directory Block
+#define MaxDataInFFB (BLOCK_SIZE-sizeof(FileControlBlock)-(MaxInodeInFFB*sizeof(int))) //Max data in First File Block
+#define MaxDataInBlock (BLOCK_SIZE/sizeof(char)) //Max char in one block
+#define MaxInodeInFFB 32 //Max inode block in the First File Block
 
-// this is in the first block of a chain, after the header
+//FCB
 typedef struct {
   int directory_block; // first block of the parent directory
   int block_in_disk;   // repeated position of the block on the disk
@@ -21,16 +19,11 @@ typedef struct {
   int is_dir;          // 0 for file, 1 for dir
 } FileControlBlock;
 
-// this is the first physical block of a file
-// it has a header
-// an FCB storing file infos
-// and can contain some data
-
 /******************* stuff on disk BEGIN *******************/
 // FirstFileBlock: E' il primo blocco di un file. E' diviso in 3 parti:
 // fcb che contiene tutte le info del file
 // data che contiene dati opzionali
-// inode che contiene gli indici della sequenza dei blocchi del file(se necessario, ovvero quando il file è minuscolo)
+// inode_block che contiene gli indici della sequenza dei blocchi del file
 typedef struct {
   FileControlBlock fcb;
   char data[MaxDataInFFB] ;
@@ -50,12 +43,11 @@ typedef struct {
 } FileBlock;
 
 
-// this is the first physical block of a directory
 // FirstDirectoryBlock: E' il primo blocco di una directory. E' suddiviso in:
 // fcb che conterrà tutte le info del file(con un campo che ti dice se è un file o directory)
 // num_entries che conterrà il numero degli elementi nella directory
-// file_blocks è una lista contenente gli indici dei blocchi dove sono contenuti gli i FirstFileBlock della directory
-// inode è una struct contenete gli indici dei DirectoryBlock 
+// file_blocks è un array contenente gli indici dei blocchi dove sono contenuti i FirstFileBlock della directory
+// inode_block è un array contenete gli indici dei DirectoryBlock 
 typedef struct {
   FileControlBlock fcb;
   int num_entries;
@@ -63,12 +55,12 @@ typedef struct {
   int inode_block[MaxInodeInFFB]; //l'ultimo indice deve essere -1 o indice ad un inodeblock
 } FirstDirectoryBlock;
 
-// this is remainder block of a directory
 typedef struct {
   int file_blocks[ (BLOCK_SIZE)/sizeof(int) ];
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
 
+// Lista collegata che tiene traccia del percorso della directory
 typedef struct DirChain {
   FirstDirectoryBlock* current;
   struct DirChain* prev;
@@ -79,7 +71,6 @@ typedef struct {
   FirstDirectoryBlock* fdb_current_dir;
   FirstDirectoryBlock* fdb_top_level_dir;
   FdbChain* fdb_chain;
-  // add more fields if needed
 } SimpleFS;
 
 enum block_types {
@@ -93,7 +84,6 @@ typedef struct {
   SimpleFS* sfs;                   // pointer to memory file system structure
   FirstFileBlock* ffb;             // pointer to the first block of the file(read it)
   FirstDirectoryBlock* directory;  // pointer to the directory where the file is stored
-  // BlockHeader* current_block;      // current block in the file
   int pos_in_block;                // block where is present the cursor
   enum block_types pos_in_block_type;          // type of block of the cursor
   int pos_in_file;                 // position of the cursor
@@ -103,7 +93,6 @@ typedef struct {
   SimpleFS* sfs;                   // pointer to memory file system structure
   FirstDirectoryBlock* fdb;        // pointer to the first block of the directory(read it)
   FirstDirectoryBlock* directory;  // pointer to the parent directory (null if top level)
-  // BlockHeader* current_block;      // current block in the directory
   int pos_in_dir;                  // absolute position of the cursor in the directory
   int pos_in_block;                // relative position of the cursor in the block
 } DirectoryHandle;
