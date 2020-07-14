@@ -12,6 +12,7 @@
 // Global variable to store the disk
 DirectoryHandle *currDir;
 int mounted = 0;
+int loaded = 0;
 int ret;
 DiskDriver disk;
 
@@ -119,6 +120,8 @@ int mkDisk(char **args) {
   printf("Bitmap Entries: %d\n", disk.header->bitmap_entries);
   printf("Reserved Blocks: %d\n", disk.reserved_blocks);
 
+  loaded = 1;
+
   return 0;
 }
 
@@ -139,6 +142,8 @@ int loadDisk(char **args) {
   printf("Bitmap Blocks: %d\n", disk.header->bitmap_blocks);
   printf("Bitmap Entires: %d\n", disk.header->bitmap_entries);
   printf("Reserved blocks: %d\n", disk.reserved_blocks);
+
+  loaded = 1;
 
   return 0;
 }
@@ -209,8 +214,10 @@ int ls(void) {
   }
   for (i = 0; i < numElem; i++) {
     printf("%s ", names[i]);
+    free(names[i]);
   }
   printf("\n");
+  free(names);
   return 0;
 }
 
@@ -445,16 +452,22 @@ int execute_built_in_command(char **args, char *line) {
     return loadDisk(args);
   }
 
+  if (strcmp(args[0], built_in_str[4]) == 0) {
+    return help();
+  }
+
+  if (!loaded) {
+    printf("Disco non caricato. Crealo/Caricalo per usare questo "
+           "comando!\n");
+    return 0;
+  }
+
   if (strcmp(args[0], built_in_str[2]) == 0) {
     return formatDisk();
   }
 
   if (strcmp(args[0], built_in_str[3]) == 0) {
     return mountDisk();
-  }
-
-  if (strcmp(args[0], built_in_str[4]) == 0) {
-    return help();
   }
 
   if (strcmp(args[0], built_in_str[5]) == 0) {
@@ -531,7 +544,7 @@ char **parse_command(char *my_line) {
 char *read_command_line(void) {
   int bufsize = 1024;
   char *buffer = calloc(bufsize, sizeof(char));
-  int c;
+  int c = '\0';
   int i = 0;
 
   while (c != '\n') {
@@ -580,8 +593,9 @@ int main(int argc, char **arg) {
         printf("INVALID COMMAND!\n");
       }
     }
+    free(command);
+    free(line);
   }
   free(saved_line);
-  free(command);
   return 0;
 }

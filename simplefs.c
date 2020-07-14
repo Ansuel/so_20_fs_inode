@@ -403,7 +403,7 @@ int writeToInternalNode(FileHandle *f, void *data, int size, int startIndex,
   char *tmp_buf = calloc(MaxDataInBlock, sizeof(char));
   int current_block;
   int writeFFB = 0;
-  int ret;
+  int ret = 0;
 
   // Loop all the Inode block saved in the FFB
   for (i = startIndex; i < MaxInodeInFFB - 1 && *num_blocks > 0; i++) {
@@ -441,7 +441,6 @@ int writeToInternalNode(FileHandle *f, void *data, int size, int startIndex,
     *written_blocks += 1;
   }
 
-  free(tmp_buf);
 
   // Write the FFB
   if (writeFFB) {
@@ -449,6 +448,8 @@ int writeToInternalNode(FileHandle *f, void *data, int size, int startIndex,
     if (ret < 0)
       goto err;
   }
+
+  free(tmp_buf);
 
   return 0;
 
@@ -480,7 +481,7 @@ int writeInExternalInodeBlock(InodeBlock *currInode, DiskDriver *disk,
   int current_block, i;
   int writeCurrInode = 0;
 
-  int ret;
+  int ret = 0;
 
   for (i = startFrom; i < MaxElemInBlock - 1 && *num_blocks > 0; i++) {
     current_block = currInode->inodeList[i];
@@ -562,7 +563,6 @@ int writeToExternalINode(FileHandle *f, void *data, int size,
 
   while (*num_blocks > 0) {
     writePrevInode = 0;
-    writeCurrInode = 0;
 
     if (succInodeBlock == -1) {
       memset(&currInode, 0, sizeof(InodeBlock));
@@ -778,7 +778,6 @@ int SimpleFS_write(FileHandle *f, void *data, int size) {
 
       //  Skip inode_start linked inodeBlock
       while (inodeToSkip > 0) {
-        prevInodeBlock = currentInodeIndex;
         currentInodeIndex = succInodeBlock;
         ret = DiskDriver_readBlock(disk, &currInode, succInodeBlock);
         if (ret < 0)
@@ -1064,8 +1063,10 @@ int DeleteStoredDir(DiskDriver *disk, FirstDirectoryBlock *dir) {
 exit:
 
   ret = DiskDriver_freeBlock(disk, dir->fcb.block_in_disk);
-  if (ret < 0)
+  if (ret < 0) {
+    free(file_in_dir);
     return ret;
+  }
 
   free(file_in_dir);
 
@@ -1321,6 +1322,8 @@ int SimpleFS_mkDir(DirectoryHandle *d, char *dirname) {
   FileHandle *file = SimpleFS_createFileDir(d, dirname, 1);
 
   if (file) {
+    free(file->ffb);
+    free(file);
     return 0;
   }
 
@@ -1336,6 +1339,7 @@ int SimpleFS_changeDir(DirectoryHandle *d, char *dirname) {
       d->fdb = prev->current;
       d->pos_in_dir = 0;
       d->pos_in_block = prev->current->fcb.block_in_disk;
+      free(d->sfs->fdb_chain->current);
       free(d->sfs->fdb_chain);
       d->sfs->fdb_chain = prev;
       d->sfs->fdb_current_dir = d->fdb;
